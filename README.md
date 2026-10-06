@@ -4,10 +4,10 @@ Local video review and filtering: find visual content and spoken words, review t
 
 ## Release status
 
-- **Windows v3.24:** standalone bootstrap executable. Downloads its runtime and dependencies on first launch; models download when selected for scanning.
+- **Windows v3.25:** standalone bootstrap executable. Downloads its runtime and dependencies on first launch; models download when selected for scanning.
 - **macOS/Linux v3.20 preview:** executable shell installers, not compiled standalone binaries. macOS uses a separate preview window. Linux installer targets Ubuntu/Debian with X11/XWayland. Native desktop playback, GPU inference and platform speech backends have not been verified end to end.
 
-Source on the main branch includes the cross-platform preview changes. The Windows v3.24 release retains the Original/Filtered selection across editing and segment previews, with matching visual and audio treatments; its matching source is included in the v3.24 source archive.
+Source on the main branch includes the cross-platform preview changes. The Windows v3.25 release adds incremental filtered previews that reuse unchanged clips and play untouched footage directly; its matching source is included in the v3.25 source archive.
 
 ## Features
 
@@ -43,7 +43,7 @@ On Windows with .NET Framework 4.x installed:
 python packaging/build_windows.py
 ```
 
-Packages are written to `dist/`. The Windows source build is labeled v3.24 because it uses the cross-platform source. The Windows bootstrap pins downloaded runtime assets in `src/runtime-manifest.json`. Unix installers use Homebrew/apt plus pinned top-level Python packages; their transitive dependencies are resolved at installation time.
+Packages are written to `dist/`. The Windows source build is labeled v3.25 because it uses the cross-platform source. The Windows bootstrap pins downloaded runtime assets in `src/runtime-manifest.json`. Unix installers use Homebrew/apt plus pinned top-level Python packages; their transitive dependencies are resolved at installation time.
 
 For development, install mpv, FFmpeg/ffprobe and Ollama first. On Linux also install eSpeak NG and Qt desktop libraries. Start with `python src/desktop_entry.py`. Windows dependencies must be provisioned by the Windows installer first, with `SCENESIEVE_HOME` set to its runtime folder if needed.
 
