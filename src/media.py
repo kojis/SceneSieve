@@ -158,6 +158,8 @@ def export_media(video,doc,destination,categories,padding,normalize,progress,can
     dest=Path(destination)
     if dest.resolve()==Path(video).resolve():raise ValueError('Export must not overwrite the source video.')
     kept=core.kept_ranges(doc['duration'],core.cuts(doc,categories,padding))
+    if doc.get('_preview_range'):
+        lo,hi=doc['_preview_range'];kept=[(max(a,lo),min(b,hi)) for a,b in kept if max(a,lo)<min(b,hi)]
     if not kept:raise ValueError('All video is excluded.')
     streams=probe(video);has_audio=any(s['codec_type']=='audio' for s in streams)
     if audio_only and not has_audio:raise ValueError('This media has no audio track.')

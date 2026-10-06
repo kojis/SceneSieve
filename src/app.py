@@ -126,7 +126,7 @@ class Window(QMainWindow):
         self.jobs = 0
         self.source_position=0.;self.mark_start=None;self.mark_end=None;self.playback_mode='original'
         self.reload_timer=QTimer(self);self.reload_timer.setSingleShot(True);self.reload_timer.setInterval(180)
-        self.reload_timer.timeout.connect(lambda:self.load_embedded(paused=True))
+        self.reload_timer.timeout.connect(lambda:self.load_embedded(paused=True,preview=getattr(self,'preview_bounds',None) if self.playback_mode=='preview' else None))
         self.setStyleSheet('''QMainWindow,QDialog{background:#101820;color:#e8edf2} QWidget{font-size:13px;color:#e8edf2;background:#101820} QTabBar::tab{background:#263a48;padding:7px} QTabBar::tab:selected{background:#34556a} QProgressBar{background:#19252e;border:1px solid #395463} QProgressBar::chunk{background:#62b9c8}
             QPushButton{background:#263a48;border:1px solid #395463;padding:9px 14px;border-radius:5px}
             QPushButton:hover{background:#34556a} QPushButton:disabled{color:#72818b;background:#19252e}
@@ -207,7 +207,7 @@ class Window(QMainWindow):
         button('◀ Frame',lambda:self.jog_frame(-1),transport);button('Frame ▶',lambda:self.jog_frame(1),transport)
         button('Previous mark',lambda:self.jump_mark(-1),transport);button('Next mark',lambda:self.jump_mark(1),transport)
         self.filtered=PlaybackToggle()
-        self.filtered.toggled.connect(lambda _:self.load_embedded(paused=self.embedded.paused))
+        self.filtered.toggled.connect(lambda _:self.load_embedded(paused=self.embedded.paused,preview=getattr(self,'preview_bounds',None) if self.playback_mode=='preview' else None))
         self.speed=QComboBox();self.speed.setToolTip('Playback speed')
         for rate in (.25,.5,.75,1.,1.25,1.5,1.75,2.,3.):self.speed.addItem(f'{rate:g}×',rate)
         self.speed.setCurrentIndex(3);self.speed.currentIndexChanged.connect(lambda:self.embedded.command('set_property','speed',self.speed.currentData()));transport.addWidget(self.speed)
@@ -293,8 +293,7 @@ class Window(QMainWindow):
         context.addRow('Preview after scene',self.preview_after)
         self.preview_button=QPushButton('Preview selected scene')
         self.preview_button.clicked.connect(self.preview_scene);pl.addWidget(self.preview_button)
-        self.preview_audio=QCheckBox('Apply audio filters in preview');self.preview_audio.setChecked(True);pl.addWidget(self.preview_audio)
-        self.preview_audio.toggled.connect(lambda:self.apply_audio() if self.playback_mode=='preview' else None)
+        preview_note=QLabel('Preview uses the selected Original / Filtered mode.');preview_note.setWordWrap(True);pl.addWidget(preview_note)
         self.preview_button.setToolTip('Preview this range with context. Audio filters are applied when enabled below; video cuts are ignored. Click again to pause/resume.')
         note=QLabel('Select a row to inspect its original footage. Double-click to edit times.\n\n←/→: frame • Ctrl+←/→: 5s\nSpace: play/pause • I/O: in/out\nM: mark • [ / ]: previous/next\n+/− or wheel: zoom • Shift-wheel: pan\nDrag timeline: select range • Delete: remove selected');note.setWordWrap(True);note.setObjectName('muted');pl.addWidget(note)
         pl.addStretch();splitter.addWidget(preview);splitter.setSizes([700,330])
@@ -371,52 +370,63 @@ class Window(QMainWindow):
         self.waveform.update()
         mode='Original' if self.playback_mode=='original' else 'Filtered' if self.playback_mode=='filtered' else 'Preview'
         self.time_label.setText(f'{core.clock(t)} / {core.clock(self.doc["duration"])}{" • Preview" if mode=="Preview" else ""}' if self.doc else core.clock(t))
-    def load_embedded(self,paused=True,position=None):
+    def load_embedded(self,paused=True,position=None,preview=None):
         if not self.doc:return
         self.reload_timer.stop()
         position=self.source_position if position is None else position
+        playback_doc=copy.deepcopy(self.doc) if preview else self.doc
+        if preview:playback_doc["_preview_range"]=list(preview)
         import visual_effects
         rendered=self.filtered.isChecked() and bool(visual_effects.scenes(self.doc,self.labels(),self.padding.value()))
+        if preview and self.filtered.isChecked():
+            kept=core.kept_ranges(self.doc['duration'],core.cuts(self.doc,self.labels(),self.padding.value()))
+            if not any(max(a,preview[0])<min(b,preview[1]) for a,b in kept):
+                self.empty_preview=True;self.preview_bounds=preview;self.playback_mode='preview'
+                self.embedded.pause();self.status.setText('This segment is entirely skipped in Filtered mode. Select Original to review it.');return
         audio_path=None
         if self.filtered.isChecked() and (rendered or media.audio_scenes(self.doc) or self.doc.get('normalize_audio')):
             import playback_audio
-            audio_path=playback_audio.cache_path(self.temp.name,self.video,self.doc,self.labels(),self.padding.value(),rendered)
+            audio_path=playback_audio.cache_path(self.temp.name,self.video,playback_doc,self.labels(),self.padding.value(),rendered)
             if not audio_path.exists() and str(audio_path)!=getattr(self,'silent_audio_key',None):
                 if self.job_active:
-                    QTimer.singleShot(100,lambda:self.load_embedded(paused,position));return
-                video=self.video;doc=copy.deepcopy(self.doc);labels=set(self.labels());padding=self.padding.value()
+                    QTimer.singleShot(100,lambda:self.load_embedded(paused,position,preview));return
+                video=self.video;doc=copy.deepcopy(playback_doc);labels=set(self.labels());padding=self.padding.value()
                 self.cancel.clear()
                 def ready(result):
                     if result is None:self.silent_audio_key=str(audio_path)
-                    QTimer.singleShot(0,lambda:self.load_embedded(paused,position))
+                    QTimer.singleShot(0,lambda:self.load_embedded(paused,position,preview))
                 self.run_job(lambda progress:playback_audio.prepare(audio_path,video,doc,labels,padding,progress,self.cancel,rendered),ready,True)
                 def failed(_):
-                    self.filtered.blockSignals(True);self.filtered.setChecked(self.playback_mode=='filtered');self.filtered.blockSignals(False)
+                    self.filtered.blockSignals(True);self.filtered.setChecked(getattr(self,'loaded_filtered',False));self.filtered.blockSignals(False)
                 self.worker.failure.connect(failed)
                 return
             if not audio_path.exists():audio_path=None
         try:
             ranges=core.kept_ranges(self.doc['duration'],core.cuts(self.doc,self.labels(),self.padding.value())) if self.filtered.isChecked() else [(0,self.doc['duration'])]
+            if preview:ranges=[(max(a,preview[0]),min(b,preview[1])) for a,b in ranges if max(a,preview[0])<min(b,preview[1])]
             if not ranges:
-                self.embedded.pause();self.error('These filters exclude the entire video. Disable filtering to edit the ranges.');return
+                self.embedded.pause();self.status.setText('This segment is entirely skipped in Filtered mode. Select Original to review it.');return
             self.embedded.start(self.mpv())
             if self.filtered.isChecked():
                 if rendered:path=audio_path
                 else:
                     self.jobs+=1;path=Path(self.temp.name)/f'embedded-{self.jobs}.edl'
-                    core.atomic_text(path,core.mpv_edl(self.video,self.doc,self.labels(),self.padding.value()))
+                    core.atomic_text(path,core._mpv_ranges(self.video,ranges))
                 self.playback_mode='filtered'
-            else:path=self.video;self.playback_mode='original'
+            else:
+                path=self.video;self.playback_mode='original'
+                if preview:
+                    self.jobs+=1;path=Path(self.temp.name)/f'preview-{self.jobs}.edl';core.atomic_text(path,core._mpv_ranges(self.video,ranges))
+            self.empty_preview=False;self.loaded_filtered=self.filtered.isChecked();self.preview_bounds=preview
+            if preview:self.playback_mode='preview'
             self.embedded.load(path,ranges,position,paused,audio_path=None if rendered else audio_path,rendered=rendered)
         except Exception as e:self.error(str(e))
     def original_for_edit(self):
         if not self.doc:return
-        if self.playback_mode!='original' or self.filtered.isChecked():
-            self.filtered.blockSignals(True);self.filtered.setChecked(False);self.filtered.blockSignals(False)
-            self.load_embedded(paused=True)
+        if self.playback_mode=='preview':self.load_embedded(paused=True)
         else:self.embedded.pause()
     def seek_source(self,t):
-        self.original_for_edit();self.embedded.seek(t)
+        if self.doc:self.load_embedded(paused=True,position=t)
     def seek_subtitle(self,t):
         self.table.clearSelection();self.mark_start=self.mark_end=None;self.update_marks()
         self.seek_source(t);self.subtitle_sidebar.follow(t)
@@ -589,7 +599,6 @@ class Window(QMainWindow):
         def done(result):
             self.video,self.doc,warning=result;self.dirty=False
             self.source_position=0.;self.mark_start=self.mark_end=None;self.update_marks()
-            self.filtered.blockSignals(True);self.filtered.setChecked(False);self.filtered.blockSignals(False)
             self.file_label.setText(f'{Path(self.video).name}  •  {core.clock(self.doc["duration"])}')
             self.refresh();self.status.setText(warning or 'Video ready. Add scenes or scan with a local vision model.')
             self.audio_panel.normalize.blockSignals(True);self.audio_panel.normalize.setChecked(bool(self.doc.get('normalize_audio')));self.audio_panel.normalize.blockSignals(False)
@@ -714,7 +723,6 @@ class Window(QMainWindow):
     def play(self):
         if not self.doc:return
         if self.playback_mode=='preview':
-            self.filtered.blockSignals(True);self.filtered.setChecked(getattr(self,'preview_return_filtered',False));self.filtered.blockSignals(False)
             position=self.source_position if self.source_position<self.doc['duration']-.1 else 0.
             self.load_embedded(paused=False,position=position);self.update_play_glyphs(False);return
         if self.embedded.paused and self.source_position>=self.doc['duration']-.1:
@@ -736,20 +744,16 @@ class Window(QMainWindow):
         except Exception as e:self.error(str(e))
     def preview_scene(self):
         if not self.doc:return
-        if self.playback_mode=='preview' and getattr(self,'preview_row',None)==self.table.currentRow() and self.embedded.ready:
+        if self.playback_mode=='preview' and getattr(self,'preview_row',None)==self.table.currentRow() and self.embedded.ready and not getattr(self,'empty_preview',False):
             if self.embedded.paused and self.embedded.ranges and self.source_position>=self.embedded.ranges[-1][1]-.1:self.embedded.seek(self.embedded.ranges[0][0])
             self.embedded.pause(not self.embedded.paused);self.update_play_glyphs(self.embedded.paused);return
         try:
             scene=self.doc['scenes'][self.selected()]
             start=max(0,scene['start']-self.preview_before.value())
             end=min(self.doc['duration'],scene['end']+self.preview_after.value())
-            text=core.mpv_clip(self.video,start,end,self.doc['duration'])
-            executable=self.mpv();self.jobs+=1
-            path=Path(self.temp.name)/f'preview-{self.jobs}.edl';core.atomic_text(path,text)
-            self.preview_return_filtered=self.filtered.isChecked() or (self.preview_audio.isChecked() and bool(media.audio_scenes(self.doc)))
-            self.reload_timer.stop();self.filtered.blockSignals(True);self.filtered.setChecked(False);self.filtered.blockSignals(False)
-            self.preview_row=self.table.currentRow();self.playback_mode='preview';self.embedded.start(executable);self.embedded.load(path,[(start,end)],start,False)
-            self.status.setText(f'Previewing scene: {core.clock(start)}–{core.clock(end)}. Video cuts are not applied; audio follows the preview checkbox.')
+            self.preview_row=self.table.currentRow()
+            self.status.setText(f'Previewing scene in {"Filtered" if self.filtered.isChecked() else "Original"} mode: {core.clock(start)}–{core.clock(end)}.')
+            self.load_embedded(paused=False,position=start,preview=(start,end))
         except Exception as e:self.error(str(e))
     def selected_model(self):
         return self.model_variant.currentData() or ''
@@ -792,7 +796,7 @@ class Window(QMainWindow):
         except Exception as e:self.embedded.pause();self.error(str(e))
     def apply_audio_filters(self):
         self.set_playback_volume();self.embedded.command('set_property','speed',self.speed.currentData())
-        if self.playback_mode=='filtered' or (self.playback_mode=='preview' and self.preview_audio.isChecked()):
+        if self.filtered.isChecked():
             # Map source audio ranges onto the gapless filtered playback clock.
             mapped=[];offset=0.
             for a,b in self.embedded.ranges:
@@ -838,7 +842,6 @@ class Window(QMainWindow):
             self.doc['scenes'] = [s for s in self.doc['scenes']
                                   if not (s.get('source') == 'ollama:'+model and s['category'] in labels)]
             self.doc['scenes'].extend(scenes);self.dirty=True;self.refresh()
-            self.filtered.blockSignals(True);self.filtered.setChecked(True);self.filtered.blockSignals(False)
             self.load_embedded(paused=True,position=0.)
             self.status.setText(f'Scan finished: {len(scenes)} suggested scenes added. Review boundaries and save. A scan with no detections does not guarantee no gore.')
         identity=dict(self.doc['fingerprint'])

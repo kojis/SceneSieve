@@ -128,7 +128,7 @@ class AudioPanel(QWidget):
         def done(result):
             cues,scenes=result;self.w.doc['subtitles']=cues
             self.w.doc['scenes']=[s for s in self.w.doc['scenes'] if s.get('source')!='speech-search']+scenes
-            self.w.dirty=True;self.w.refresh();self.w.filtered.setChecked(True)
+            self.w.dirty=True;self.w.refresh()
             self.w.docks['Findings'].show();self.w.docks['Findings'].raise_()
             self.w.status.setText(f'{len(scenes)} word matches added from {name}. Review timing and context.')
         self.job(scan,done)
@@ -140,7 +140,7 @@ class AudioPanel(QWidget):
             scenes=[self.treatment(s) for s in scenes]
             def done(prepared):
                 self.w.doc['scenes']=[s for s in self.w.doc['scenes'] if s.get('source')!='speech-search']+prepared
-                self.w.dirty=True;self.w.refresh();self.w.filtered.setChecked(True);self.w.status.setText(f'{len(prepared)} word matches added. Review timing and replacement audio.')
+                self.w.dirty=True;self.w.refresh();self.w.status.setText(f'{len(prepared)} word matches added. Review timing and replacement audio.')
             self.job(lambda p:replacements.prepare_all(scenes,p,self.w.cancel),done)
         except Exception as e:self.w.error(str(e))
     def replacement_text(self):
@@ -181,7 +181,7 @@ class AudioPanel(QWidget):
             scenes=[self.treatment(self.w.doc['scenes'][r]) for r in rows]
             def done(prepared):
                 for row,scene in zip(rows,prepared):self.w.doc['scenes'][row]=scene
-                self.w.dirty=True;self.w.refresh();self.w.filtered.setChecked(True);self.w.status.setText('Updated selected word treatments. Filtered playback is enabled.');self.update_apply_state()
+                self.w.dirty=True;self.w.refresh();self.w.status.setText('Updated selected word treatments. Select Filtered to hear the changes.');self.update_apply_state()
             self.job(lambda p:replacements.prepare_all(scenes,p,self.w.cancel),done)
         except Exception as e:self.w.error(str(e))
     def load_words(self):
