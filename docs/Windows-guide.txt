@@ -1,7 +1,7 @@
 SceneSieve 3.14 — standalone Windows app with first-run downloads
 
 STARTING
-Run SceneSieve-Windows-Standalone-v3.19.exe. No Python, mpv, FFmpeg, or Ollama
+Run SceneSieve-Windows-Standalone-v3.21.exe. No Python, mpv, FFmpeg, or Ollama
 installation is required. The executable contains only the app and setup code.
 First launch downloads checksum-pinned Python/support libraries, mpv, FFmpeg,
 7-Zip's extractor, and Ollama. This requires internet access and several GB of
@@ -456,3 +456,13 @@ mode keeps the source position and current play/pause state. Scan completion
 can still select Filtered for reviewing results.
 Validation: exclusive selection, default mode, playback reload and silent
 state synchronization checks, plus 59 unit tests.
+
+MAIN PLAYER AUDIO FIX (3.21)
+Filtered playback prepares a seekable temporary FLAC soundtrack using the same
+cuts, gain, mute, bleep, spoken replacements and normalization as audio export.
+This avoids live replacement streams becoming silent or drifting on reloads
+and seeks. A progress dialog appears while the soundtrack is prepared; later
+playback reuses it until the edits or source change. Original playback uses the
+source audio. Temporary soundtracks are removed when the app closes.
+Validation: 62 unit tests, plus captured main-player PCM matching the prepared
+track for bleep and spoken replacement, video cuts, and seeking into a bleep.
