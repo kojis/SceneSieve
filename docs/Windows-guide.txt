@@ -1,7 +1,7 @@
-SceneSieve 3.14 — standalone Windows app with first-run downloads
+SceneSieve 3.22 — standalone Windows app with first-run downloads
 
 STARTING
-Run SceneSieve-Windows-Standalone-v3.21.exe. No Python, mpv, FFmpeg, or Ollama
+Run SceneSieve-Windows-Standalone-v3.22.exe. No Python, mpv, FFmpeg, or Ollama
 installation is required. The executable contains only the app and setup code.
 First launch downloads checksum-pinned Python/support libraries, mpv, FFmpeg,
 7-Zip's extractor, and Ollama. This requires internet access and several GB of
@@ -30,11 +30,10 @@ The model selector lists downloadable local vision variants as well as installed
 models. Find models refreshes the official Ollama catalog. Cloud-only and Mac-only
 MLX tags are excluded. Choose a family first, then a variant where available. The adjacent description
 explains expected speed/resource tradeoffs; these are not gore benchmark scores.
-Models marked [download on scan] download automatically when Scan / resume is
+Models marked [download on scan] download automatically when Scan is
 pressed, then scanning begins. Capability checks reject non-vision/cloud models.
 Large variants can require substantial disk, RAM and GPU memory; availability in
-the catalog does not mean that every model fits your computer. Gore remains the
-only default visual category. Detection can miss content or produce false matches.
+the catalog does not mean that every model fits your computer. Visual categories are empty until you select a preset or enter categories. Detection can miss content or produce false matches.
 
 EDITOR
 Drop/open a video. Playback, waveform, timeline, range list and details share the
@@ -466,3 +465,26 @@ playback reuses it until the edits or source change. Original playback uses the
 source audio. Temporary soundtracks are removed when the app closes.
 Validation: 62 unit tests, plus captured main-player PCM matching the prepared
 track for bleep and spoken replacement, video cuts, and seeking into a bleep.
+
+VISUAL EFFECTS AND AUDIO DISTORTION (3.22)
+Video > When matched defaults to Skip. Choose Pixelate, Blur, More blur, or
+Freeze frame before scanning. To change existing findings, select their rows
+and use Apply to selected. Double-click a finding to change its Action.
+Visual treatments use the active category selection and padding, just like Skip.
+Effects preserve the duration; only Skip removes time. Where effects overlap,
+Freeze frame takes precedence, followed by Pixelate, More blur, then Blur.
+Freeze frame holds a frame preceding the padded interval; an interval starting
+at zero uses black because no preceding frame exists. Review the held frame.
+Audio / Subtitles > Word treatment > Distort replaces the selected waveform with
+noise shaped by its volume. This preserves timing and intensity rather than
+muting the interval. Review the result; Mute remains available for silence.
+Filtered subtitles remove the matched words for Distort, as with Mute/Bleep.
+Choose Filtered in the main player to see all applied visual/audio edits.
+Visual effects require a temporary rendered preview, which can take time and
+disk space for long videos. A progress dialog appears, and the result is reused
+until edits change. Temporary previews are removed when the app closes.
+The selected-scene review preview intentionally shows original video boundaries;
+use the main Filtered toggle to inspect the visual treatment itself.
+Export filtered video preserves all effects. Kodi/MPlayer sidecars turn Distort
+into a mute; no supported sidecar preserves visual effects. The export warning
+explains these limitations. Export video when recipients need those effects.
