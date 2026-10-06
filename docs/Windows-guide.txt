@@ -1,7 +1,7 @@
-SceneSieve 3.22 — standalone Windows app with first-run downloads
+SceneSieve 3.23 — standalone Windows app with first-run downloads
 
 STARTING
-Run SceneSieve-Windows-Standalone-v3.22.exe. No Python, mpv, FFmpeg, or Ollama
+Run SceneSieve-Windows-Standalone-v3.23.exe. No Python, mpv, FFmpeg, or Ollama
 installation is required. The executable contains only the app and setup code.
 First launch downloads checksum-pinned Python/support libraries, mpv, FFmpeg,
 7-Zip's extractor, and Ollama. This requires internet access and several GB of
@@ -488,3 +488,11 @@ use the main Filtered toggle to inspect the visual treatment itself.
 Export filtered video preserves all effects. Kodi/MPlayer sidecars turn Distort
 into a mute; no supported sidecar preserves visual effects. The export warning
 explains these limitations. Export video when recipients need those effects.
+
+CUSTOM SPOKEN REPLACEMENT (3.23)
+Under Audio / Subtitles > Word treatment, choose Spoken replacement.
+Choose Custom in the phrase list, then type the phrase in the field that appears
+(up to 120 characters). Select the voice and replacement volume as usual.
+Select existing word findings and click Apply, or Find words to add new matches.
+Apply stays disabled for blank custom text or when no changes are pending.
+The typed phrase is used for filtered playback, exports and filtered subtitles.
