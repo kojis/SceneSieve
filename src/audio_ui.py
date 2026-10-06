@@ -32,13 +32,14 @@ class AudioPanel(QWidget):
         layout=section('Word treatment')
         row=QHBoxLayout();layout.addLayout(row)
         self.mode=QComboBox();self.mode.addItem('Mute','duck');self.mode.addItem('Bleep tone','bleep');self.mode.addItem('Spoken replacement','replace');self.mode.addItem('Distort','distort');self.mode.setToolTip('Distort replaces the waveform with noise shaped by its volume, preserving timing and rhythm. Review the result; use Mute for silence.');row.addWidget(QLabel('Word treatment'));row.addWidget(self.mode)
-        self.phrase=QComboBox();self.phrase.setEditable(True);self.phrase.addItems(['Darn!','Heck!','Oh, shoot!','Good grief!','Oh, bother!']);row.addWidget(self.phrase)
+        self.phrase=QComboBox();self.phrase.addItems(['Darn!','Heck!','Oh, shoot!','Good grief!','Oh, bother!','Custom']);self.phrase.setAccessibleName('Spoken replacement phrase');row.addWidget(self.phrase)
+        self.custom_phrase=QLineEdit();self.custom_phrase.setMaxLength(120);self.custom_phrase.setPlaceholderText('Type anything to be spoken (up to 120 characters)');self.custom_phrase.setAccessibleName('Custom spoken replacement');layout.addWidget(self.custom_phrase)
         row=QHBoxLayout();layout.addLayout(row)
         from voices import VoiceCombo
         self.voice_label=QLabel('Voice');row.addWidget(self.voice_label);self.voice=VoiceCombo();self.voice.setMaximumWidth(200);row.addWidget(self.voice);self.voice.currentIndexChanged.connect(self.update_apply_state)
         self.frequency=self.spin(row,'Tone',1000,100,4000,' Hz');self.replacement_level=self.spin(row,'Replacement volume',15,0,100,' %')
         self.apply_button=self.button(row,'Apply',self.apply_selected);self.apply_button.setEnabled(False)
-        self.phrase.currentTextChanged.connect(self.update_apply_state);self.frequency.valueChanged.connect(self.update_apply_state);self.replacement_level.valueChanged.connect(self.update_apply_state)
+        self.phrase.currentTextChanged.connect(self.update_treatment_controls);self.custom_phrase.textChanged.connect(self.update_apply_state);self.frequency.valueChanged.connect(self.update_apply_state);self.replacement_level.valueChanged.connect(self.update_apply_state)
         self.mode.currentIndexChanged.connect(self.update_treatment_controls);self.update_treatment_controls()
         layout=section('Audio levels and normalization')
         row=QHBoxLayout();layout.addLayout(row)
@@ -114,8 +115,10 @@ class AudioPanel(QWidget):
         if not self.w.doc or (self.w.job_active):return
         self.set_word_filter(name)
         if self.w.doc.get('subtitles'):self.find_words();return
+        if self.mode.currentData()=='replace' and not self.replacement_text():
+            self.w.error('Enter the custom phrase to speak before scanning.');return
         video=self.w.video;duration=self.w.doc['duration'];model=self.speech_variant.currentData();terms=self.word_terms();amount=0
-        treatment=dict(action=self.mode.currentData(),level=amount/100,replacement=self.phrase.currentText().strip(),frequency=self.frequency.value(),voice=self.voice.currentData() or '',replacement_level=self.replacement_level.value()/100)
+        treatment=dict(action=self.mode.currentData(),level=amount/100,replacement=self.replacement_text(),frequency=self.frequency.value(),voice=self.voice.currentData() or '',replacement_level=self.replacement_level.value()/100)
         def scan(progress):
             cues=media.transcribe(video,model,progress,self.w.cancel)
             if self.w.cancel.is_set():raise InterruptedError('Audio scan cancelled.')
@@ -140,9 +143,12 @@ class AudioPanel(QWidget):
                 self.w.dirty=True;self.w.refresh();self.w.filtered.setChecked(True);self.w.status.setText(f'{len(prepared)} word matches added. Review timing and replacement audio.')
             self.job(lambda p:replacements.prepare_all(scenes,p,self.w.cancel),done)
         except Exception as e:self.w.error(str(e))
+    def replacement_text(self):
+        return (self.custom_phrase.text() if self.phrase.currentText()=='Custom' else self.phrase.currentText()).strip()
     def update_treatment_controls(self):
         mode=self.mode.currentData()
         self.phrase.setVisible(mode=='replace')
+        self.custom_phrase.setVisible(mode=='replace' and self.phrase.currentText()=='Custom')
         self.frequency.setVisible(mode=='bleep');self.frequency.caption.setVisible(mode=='bleep')
         self.voice.setVisible(mode=='replace');self.voice_label.setVisible(mode=='replace')
         self.replacement_level.setVisible(mode in ('bleep','replace'));self.replacement_level.caption.setVisible(mode in ('bleep','replace'))
@@ -159,12 +165,12 @@ class AudioPanel(QWidget):
         for row in rows:
             scene=self.w.doc['scenes'][row]
             if scene.get('action') not in ('duck','bleep','replace','distort'):continue
-            target=dict(action=mode,level=0,replacement=self.phrase.currentText().strip(),frequency=self.frequency.value(),voice=self.voice.currentData() or '',replacement_level=self.replacement_level.value()/100)
+            target=dict(action=mode,level=0,replacement=self.replacement_text(),frequency=self.frequency.value(),voice=self.voice.currentData() or '',replacement_level=self.replacement_level.value()/100)
             defaults=dict(level=0,replacement='Darn!',frequency=1000,voice='',replacement_level=.15)
             changed|=any(scene.get(k,defaults.get(k))!=target[k] for k in keys)
-        self.apply_button.setEnabled(changed and (mode!='replace' or bool(self.phrase.currentText().strip())))
+        self.apply_button.setEnabled(changed and (mode!='replace' or bool(self.replacement_text())))
     def treatment(self,scene):
-        updated={**scene,'action':self.mode.currentData(),'level':0/100,'replacement':self.phrase.currentText().strip(),'frequency':self.frequency.value(),'voice':self.voice.currentData() or '','replacement_level':self.replacement_level.value()/100}
+        updated={**scene,'action':self.mode.currentData(),'level':0/100,'replacement':self.replacement_text(),'frequency':self.frequency.value(),'voice':self.voice.currentData() or '','replacement_level':self.replacement_level.value()/100}
         core.validate({'version':1,'duration':self.w.doc['duration'],'scenes':[updated]})
         return updated
     def apply_selected(self):
