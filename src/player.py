@@ -40,7 +40,7 @@ class EmbeddedPlayer(QObject):
         self.seek_pending=False
         self.command_serial=1000;self.checked_commands={}
         self.buffer=b'';self.pending=None;self.ranges=[];self.paused=True;self.position=0.;self.ready=False
-        self.loading=False;self.after_load=[];self.tries=0;self.closing=False;self.input_path=None
+        self.audio_path=None;self.loading=False;self.after_load=[];self.tries=0;self.closing=False;self.input_path=None
     def start(self,executable):
         if self.process.state()!=QProcess.ProcessState.NotRunning:return
         name='scenesieve-'+uuid.uuid4().hex
@@ -74,15 +74,21 @@ class EmbeddedPlayer(QObject):
             if args[:2]==('set_property','af'):
                 self.command_serial+=1;payload['request_id']=self.command_serial;self.checked_commands[self.command_serial]='Audio filter'
             self.socket.write((json.dumps(payload)+'\n').encode())
-    def load(self,path,ranges,position=0.,paused=True):
+    def load(self,path,ranges,position=0.,paused=True,audio_path=None):
         if not self.ready:
-            self.pending=(path,ranges,position,paused);return
+            self.pending=(path,ranges,position,paused,audio_path);return
+        self.audio_path=audio_path
         self.ranges=list(ranges);self.position=position;self.paused=paused;self.loading=True
         self.after_load=[]
         self.command('set_property','pause',True)
+        self.command('set_property','af','')
         options={'start':str(playback_time(position,self.ranges)),'pause':'yes'}
+        if audio_path:options['audio-files']=str(audio_path)
         if os.name=='nt':self.command('loadfile',str(path),'replace',-1,options)
-        else:self.command('loadfile',str(path),'replace')
+        else:
+            if audio_path:self.command('set_property','audio-files',str(audio_path))
+            else:self.command('set_property','audio-files','')
+            self.command('loadfile',str(path),'replace')
     def read(self):
         self.buffer+=bytes(self.socket.readAll())
         while b'\n' in self.buffer:

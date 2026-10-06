@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import copy
 import math
 import os
 from pathlib import Path
@@ -362,6 +363,24 @@ class Window(QMainWindow):
         if not self.doc:return
         self.reload_timer.stop()
         position=self.source_position if position is None else position
+        audio_path=None
+        if self.filtered.isChecked() and (media.audio_scenes(self.doc) or self.doc.get('normalize_audio')):
+            import playback_audio
+            audio_path=playback_audio.cache_path(self.temp.name,self.video,self.doc,self.labels(),self.padding.value())
+            if not audio_path.exists() and str(audio_path)!=getattr(self,'silent_audio_key',None):
+                if self.job_active:
+                    QTimer.singleShot(100,lambda:self.load_embedded(paused,position));return
+                video=self.video;doc=copy.deepcopy(self.doc);labels=set(self.labels());padding=self.padding.value()
+                self.cancel.clear()
+                def ready(result):
+                    if result is None:self.silent_audio_key=str(audio_path)
+                    QTimer.singleShot(0,lambda:self.load_embedded(paused,position))
+                self.run_job(lambda progress:playback_audio.prepare(audio_path,video,doc,labels,padding,progress,self.cancel),ready,True)
+                def failed(_):
+                    self.filtered.blockSignals(True);self.filtered.setChecked(self.playback_mode=='filtered');self.filtered.blockSignals(False)
+                self.worker.failure.connect(failed)
+                return
+            if not audio_path.exists():audio_path=None
         try:
             ranges=core.kept_ranges(self.doc['duration'],core.cuts(self.doc,self.labels(),self.padding.value())) if self.filtered.isChecked() else [(0,self.doc['duration'])]
             if not ranges:
@@ -372,7 +391,7 @@ class Window(QMainWindow):
                 core.atomic_text(path,core.mpv_edl(self.video,self.doc,self.labels(),self.padding.value()))
                 self.playback_mode='filtered'
             else:path=self.video;self.playback_mode='original'
-            self.embedded.load(path,ranges,position,paused)
+            self.embedded.load(path,ranges,position,paused,audio_path=audio_path)
         except Exception as e:self.error(str(e))
     def original_for_edit(self):
         if not self.doc:return
@@ -746,6 +765,7 @@ class Window(QMainWindow):
         def done(data):self.waveform.data=data;self.waveform.update();self.status.setText('Audio waveform ready.')
         self.run_job(lambda p:media.waveform(video,p,self.cancel),done,True)
     def audio_seek_settled(self,position):
+        if getattr(self.embedded,'audio_path',None):return
         if self.doc and any(s.get('action') in ('bleep','replace') for s in media.audio_scenes(self.doc)):
             self.embedded.position=position;self.apply_audio()
     def apply_audio(self):
@@ -762,8 +782,10 @@ class Window(QMainWindow):
                     x,y=max(a,scene['start']),min(b,finish)
                     if y>x:mapped.append({**scene,'start':offset+x-a,'end':offset+y-a,'_mute_end':offset+min(b,scene['end'])-a,'_replacement_end':offset+y-a,'_replacement_source':scene,'_replacement_offset':x-scene['start']})
                 offset+=b-a
-            filt=media.audio_filter({'scenes':mapped},normalize=bool(self.doc.get('normalize_audio')),replacement_start=playback_time(self.embedded.position,self.embedded.ranges))
-            self.embedded.command('set_property','af','lavfi=['+filt+']')
+            if getattr(self.embedded,'audio_path',None):self.embedded.command('set_property','af','')
+            else:
+                filt=media.audio_filter({'scenes':mapped},normalize=bool(self.doc.get('normalize_audio')),replacement_start=playback_time(self.embedded.position,self.embedded.ranges))
+                self.embedded.command('set_property','af','lavfi=['+filt+']')
             self.embedded.command('set_property','sid','no')
             text=media.subtitle_text(self.doc,self.embedded.ranges)
             if text:
