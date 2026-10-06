@@ -1,7 +1,7 @@
 """Speech, subtitle, audio-level and output controls for the main editor."""
 import copy,json
 from pathlib import Path
-from PySide6.QtCore import Qt,QTimer
+from PySide6.QtCore import Qt,QTimer,QItemSelectionModel
 from PySide6.QtWidgets import QWidget,QVBoxLayout,QHBoxLayout,QLabel,QLineEdit,QPushButton,QComboBox,QDoubleSpinBox,QCheckBox,QFileDialog,QInputDialog,QGroupBox
 import core,media,replacements,presets
 from paths import DATA,SETTINGS
@@ -38,7 +38,9 @@ class AudioPanel(QWidget):
         from voices import VoiceCombo
         self.voice_label=QLabel('Voice');row.addWidget(self.voice_label);self.voice=VoiceCombo();self.voice.setMaximumWidth(200);row.addWidget(self.voice);self.voice.currentIndexChanged.connect(self.update_apply_state)
         self.frequency=self.spin(row,'Tone',1000,100,4000,' Hz');self.replacement_level=self.spin(row,'Replacement volume',15,0,100,' %')
-        self.apply_button=self.button(row,'Apply',self.apply_selected);self.apply_button.setEnabled(False)
+        self.treatment_note=QLabel('Select findings, choose a treatment, then Apply. Spoken replacement replaces the original word audio and filtered subtitle text.');self.treatment_note.setWordWrap(True);layout.addWidget(self.treatment_note)
+        apply_row=QHBoxLayout();layout.addLayout(apply_row)
+        self.apply_button=self.button(apply_row,'Apply',self.apply_selected);self.apply_button.setMinimumHeight(40);self.apply_button.setToolTip('Update the selected audio findings with the phrase, voice and volume above.');self.apply_button.setEnabled(False)
         self.phrase.currentTextChanged.connect(self.update_treatment_controls);self.custom_phrase.textChanged.connect(self.update_apply_state);self.frequency.valueChanged.connect(self.update_apply_state);self.replacement_level.valueChanged.connect(self.update_apply_state)
         self.mode.currentIndexChanged.connect(self.update_treatment_controls);self.update_treatment_controls()
         layout=section('Audio levels and normalization')
@@ -181,7 +183,11 @@ class AudioPanel(QWidget):
             scenes=[self.treatment(self.w.doc['scenes'][r]) for r in rows]
             def done(prepared):
                 for row,scene in zip(rows,prepared):self.w.doc['scenes'][row]=scene
-                self.w.dirty=True;self.w.refresh();self.w.status.setText('Updated selected word treatments. Select Filtered to hear the changes.');self.update_apply_state()
+                self.w.dirty=True;self.w.refresh()
+                self.w.table.blockSignals(True);self.w.table.clearSelection()
+                for row in rows:self.w.table.selectionModel().select(self.w.table.model().index(row,0),QItemSelectionModel.SelectionFlag.Select|QItemSelectionModel.SelectionFlag.Rows)
+                self.w.table.blockSignals(False)
+                self.w.status.setText(f'Applied treatment to {len(rows)} selected segment(s). Select Filtered to hear it and see the replaced subtitles.');self.update_apply_state()
             self.job(lambda p:replacements.prepare_all(scenes,p,self.w.cancel),done)
         except Exception as e:self.w.error(str(e))
     def load_words(self):

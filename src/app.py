@@ -260,7 +260,7 @@ class Window(QMainWindow):
         self.categories.textChanged.connect(self.update_summary)
         self.padding.valueChanged.connect(self.update_summary)
         splitter=QSplitter();content.addWidget(splitter,1)
-        self.table=QTableWidget(0,8);self.table.setHorizontalHeaderLabels(['Enabled','Start','End','Category','Review','Source','Action','Words'])
+        self.table=QTableWidget(0,8);self.table.setHorizontalHeaderLabels(['Enabled','Start','End','Category','Review','Source','Action','Words / replacement'])
         from findings_flash import FindingsFlash
         self.findings_flash=FindingsFlash(self.table);self.table.setItemDelegate(self.findings_flash)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -610,7 +610,7 @@ class Window(QMainWindow):
         self.table.blockSignals(True);self.table.setRowCount(len(self.doc['scenes']))
         for row,s in enumerate(self.doc['scenes']):
             check=QTableWidgetItem();check.setFlags(Qt.ItemFlag.ItemIsEnabled|Qt.ItemFlag.ItemIsSelectable|Qt.ItemFlag.ItemIsUserCheckable);check.setCheckState(Qt.CheckState.Checked if s['enabled'] else Qt.CheckState.Unchecked);self.table.setItem(row,0,check)
-            for col,value in enumerate([core.clock(s['start']),core.clock(s['end']),s['category'],'Checked' if s['reviewed'] else 'Needs review',s.get('source','imported'),visual_effects.LABELS.get(s.get('action'),s.get('action','skip')),s.get('text','')],1):self.table.setItem(row,col,QTableWidgetItem(value))
+            for col,value in enumerate([core.clock(s['start']),core.clock(s['end']),s['category'],'Checked' if s['reviewed'] else 'Needs review',s.get('source','imported'),visual_effects.LABELS.get(s.get('action'),s.get('action','skip')),(s.get('text','')+' → '+s.get('replacement','') if s.get('action')=='replace' else s.get('text',''))],1):self.table.setItem(row,col,QTableWidgetItem(value))
         self.table.blockSignals(False)
         self.update_summary()
         self.preview.setPixmap(QPixmap());self.preview.setText('Scene preview is hidden.\nSelect a scene and choose Reveal frame.')
