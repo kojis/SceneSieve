@@ -234,6 +234,7 @@ class Window(QMainWindow):
         self.workspace_splitter.addWidget(self.editor_tabs)
         self.workspace_splitter.setChildrenCollapsible(False)
         self.workspace_splitter.setSizes([480,360])
+        self.video_shortcuts=presets.buttons(content,presets.VIDEO,self.video_preset)
         filters=QHBoxLayout(); content.addLayout(filters)
         category_row=filters
         filters.addWidget(QLabel('Filter categories'))
@@ -249,14 +250,9 @@ class Window(QMainWindow):
         self.video_action.setToolTip('Treatment for the next video scan. Apply changes selected visual findings. Skip is the default.')
         effects_row.addWidget(self.video_action)
         apply_effect=QPushButton('Apply to selected');apply_effect.clicked.connect(self.apply_video_action);effects_row.addWidget(apply_effect)
-        presets.buttons(content,presets.VIDEO,self.video_preset)
         self.summary=QLabel('No scenes marked.');content.addWidget(self.summary)
-        self.strict_gore=QPushButton('Precise detection: ON');self.strict_gore.setCheckable(True)
-        self.strict_gore.setStyleSheet('QPushButton{padding:10px;font-weight:600;border:2px solid #697583;background:#29313b} QPushButton:checked{background:#245c65;border:2px solid #77d6d1;color:white}')
-        self.strict_gore.toggled.connect(lambda enabled:self.strict_gore.setText('Precise detection: ON' if enabled else 'Precise detection: OFF'))
-        self.strict_gore.setChecked(True)
-        self.strict_gore.setToolTip('Rechecks matches in every selected video category for clear visual evidence. Can reduce false positives, but takes longer and may miss subtle content. Applies to the next scan.')
-        content.addWidget(self.strict_gore)
+        from detection_balance import DetectionBalance
+        self.precision=DetectionBalance();content.addWidget(self.precision)
         self.categories.textChanged.connect(self.update_summary)
         self.padding.valueChanged.connect(self.update_summary)
         splitter=QSplitter();content.addWidget(splitter,1)
@@ -836,7 +832,7 @@ class Window(QMainWindow):
         if not model or not labels:self.error('Find a local vision model and enter at least one category.');return
         self.cancel.clear();self.status.setText('Starting scan. Video frames are sent only to local Ollama.')
         path,duration,step=self.video,self.doc['duration'],self.step.value()
-        strict_gore=self.strict_gore.isChecked();action=self.video_action.currentData()
+        precision=self.precision.value();action=self.video_action.currentData()
         def done(scenes):
             scenes=[{**s,'action':action} for s in scenes]
             self.doc['scenes'] = [s for s in self.doc['scenes']
@@ -847,7 +843,7 @@ class Window(QMainWindow):
         identity=dict(self.doc['fingerprint'])
         def scan(progress):
             model_catalog.ensure_model(model,progress,self.cancel)
-            return scanner.scan(path,duration,model,labels,step,self.cancel,progress,cache_dir=DATA/'scan-cache',identity=identity,strict_gore=strict_gore)
+            return scanner.scan(path,duration,model,labels,step,self.cancel,progress,cache_dir=DATA/'scan-cache',identity=identity,precision=precision)
         self.run_job(scan,done,True)
     def cancel_scan(self):
         self.cancel.set();self.status.setText('Cancelling the current operation…')

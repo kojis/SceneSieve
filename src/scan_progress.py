@@ -39,6 +39,8 @@ class ScanProgress(QDialog):
         self.cancel_button=QPushButton('Cancel');self.cancel_button.clicked.connect(self.reject);layout.addWidget(self.cancel_button)
     def update_progress(self,text):
         if self.cancelling:return
+        duration=re.fullmatch(r'Media duration: ([\d.]+)s',text)
+        if duration:self.duration=float(duration[1]);return
         self.detail.setText(text)
         measured=measured_progress(text,self.duration)
         if measured:

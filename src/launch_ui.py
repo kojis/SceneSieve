@@ -39,10 +39,10 @@ class DropButton(QPushButton):
 
 class LaunchDialog(QDialog):
     def __init__(self,parent):
-        super().__init__(None);self.setWindowIcon(parent.windowIcon());self.setStyleSheet(parent.styleSheet());self.choice=None;self.path=None;self.setWindowTitle('Welcome to SceneSieve');self.resize(740,420)
+        super().__init__(None);self.setWindowIcon(parent.windowIcon());self.setStyleSheet(parent.styleSheet());self.choice=None;self.path=None;self.setWindowTitle('Welcome to SceneSieve');self.resize(1060,440)
         layout=QVBoxLayout(self);heading=QLabel('Drop your media asset to...');heading.setStyleSheet('font-size:25px;font-weight:600;padding:10px 0');layout.addWidget(heading)
         cards=QHBoxLayout();cards.setSpacing(18);layout.addLayout(cards)
-        for title,copy in [('Wizard','allow the wizard to step you through morality augmentation'),('Advanced','Enter an advanced state of [redacted]')]:
+        for title,copy in [('Wizard','allow the wizard to step you through morality augmentation'),('Advanced','Enter an advanced state of [redacted]'),('Automatic','Attempt an all-ages edit. Broad filtering, then export. Includes every shortcut except Insects and Spiders. Detection can miss content.')]:
             button=DropButton(title,copy);cards.addWidget(button,1)
             button.clicked.connect(lambda checked=False,title=title:self.choose(title,None))
             button.dropped.connect(lambda path,title=title:self.choose(title,path))
@@ -93,7 +93,7 @@ def start_mode(window,mode,path=None,plan=None):
         window.editor_tabs.setCurrentIndex(0);window.docks['Detection and export'].raise_()
     if plan:
         window.video_action.setCurrentIndex(window.video_action.findData(plan.get('video_action','skip')))
-        path=plan['path'];window.categories.setText(plan['categories']);window.strict_gore.setChecked(plan['precise'])
+        path=plan['path'];window.categories.setText(plan['categories']);window.precision.setValue(100 if plan['precise'] else 50)
         window.audio_panel.set_word_filter(plan.get('audio_preset'),plan['words']);window.audio_panel.mode.setCurrentIndex(window.audio_panel.mode.findData(plan['treatment']))
     if not path:return
     steps=[lambda:window.open_video_path(path)]

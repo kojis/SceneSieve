@@ -27,7 +27,7 @@ def self_test(output):
                           creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0,timeout=20)
     assert player.returncode==0
     window=Window()
-    assert window.strict_gore.isChecked()
+    assert window.precision.value()==100
     assert window.labels()==set()
     window.categories.setText('gore')
     frame=np.full((192,320,3),(40,160,40),dtype=np.uint8)
@@ -83,6 +83,16 @@ def main():
             if chooser.choice!='Wizard':break
             wizard=SetupWizard(window,chooser.path)
             if wizard.exec():plan=wizard.plan();break
+        if chooser.choice=='Automatic':
+            from automated_mode import AutomatedMode
+            path=chooser.path
+            if not path:
+                from PySide6.QtWidgets import QFileDialog
+                path,_=QFileDialog.getOpenFileName(chooser,'Choose video for automatic filtering','','Videos (*.mp4 *.mkv *.avi *.mov *.webm *.m4v);;All files (*)')
+            if not path:return 0
+            application.automated_mode=AutomatedMode(application,window,path)
+            QTimer.singleShot(0,application.automated_mode.start)
+            return application.exec()
         window.show();application.setQuitOnLastWindowClosed(True)
         window.status.setText('Starting the local AI service…')
         def ready(models):

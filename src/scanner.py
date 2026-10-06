@@ -91,8 +91,16 @@ def parse_categories(result, categories):
 GORE_DETAILS = ['exposed internal organs', 'severed body part',
                 'open wound exposing deep tissue or bone', 'visibly mutilated body']
 
-def classify(frame, model, categories, cancelled=None, strict_gore=True):
-    labels = _classify_frame(frame, model, categories, cancelled)
+def classify(frame, model, categories, cancelled=None, strict_gore=True, precision=None):
+    if precision is None:labels = _classify_frame(frame, model, categories, cancelled)
+    else:
+        precision=max(0,min(100,int(precision)));strict_gore=precision>=75
+        policy=('Include even plausible, ambiguous, obscured or brief indications. Prefer false positives to missed content. Gore includes suspected injury, blood or disturbing bodily harm; mature subject matter includes threatening violence, sexual themes or self-harm.' if precision==0 else
+                'Include plausible matches even when details are uncertain; lean toward filtering possible adult material.' if precision==25 else
+                'Include likely visible matches, but do not guess from mood or genre alone.' if precision==50 else
+                'Require clearly visible evidence; omit ambiguous or inferred matches.' if precision==75 else
+                'Require unmistakable direct visual evidence; reject small, blurred, uncertain or inferred matches.')
+        labels=_classify_frame(frame,model,categories,cancelled,prompt='Assess this frame for the allowed content categories. '+policy+' Return only a JSON object with a categories array containing matching allowed labels, or an empty array. Allowed labels: '+json.dumps(categories))
     gore_labels = [label for label in labels if label.casefold() == 'gore']
     if strict_gore and gore_labels:
         details = _classify_frame(frame, model, GORE_DETAILS, cancelled, prompt=(
@@ -172,10 +180,10 @@ def _classify_frame(frame, model, categories, cancelled=None, prompt=None):
 
 class Checkpoint:
     """Cache validated observations only, keyed to the exact video and scan settings."""
-    def __init__(self, directory, identity, duration, model, categories, step, strict_gore=True):
-        self.metadata = {'version':3, 'video':identity, 'duration':float(duration),
+    def __init__(self, directory, identity, duration, model, categories, step, strict_gore=True, precision=None):
+        self.metadata = {'version':4, 'video':identity, 'duration':float(duration),
                          'model':model, 'categories':sorted(categories), 'step':float(step),
-                         'strict_gore':bool(strict_gore)}
+                         'strict_gore':bool(strict_gore),'precision':precision}
         key = hashlib.sha256(json.dumps(self.metadata, sort_keys=True).encode()).hexdigest()
         self.path = Path(directory) / (key + '.json')
         self.observations = {}
@@ -199,12 +207,12 @@ class Checkpoint:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         core.atomic_text(self.path, json.dumps({'metadata':self.metadata,'observations':self.observations}))
 
-def scan(path, duration, model, categories, step, cancelled, progress, cache_dir=None, identity=None, strict_gore=True):
+def scan(path, duration, model, categories, step, cancelled, progress, cache_dir=None, identity=None, strict_gore=True, precision=None):
     if model not in local_models():
         raise ValueError('Select an installed local vision model. Cloud models are not supported.')
     checkpoint = None
     if cache_dir is not None:
-        checkpoint = Checkpoint(cache_dir, identity or core.fingerprint(path), duration, model, categories, step, strict_gore)
+        checkpoint = Checkpoint(cache_dir, identity or core.fingerprint(path), duration, model, categories, step, strict_gore, precision)
     observations = dict(checkpoint.observations) if checkpoint else {}
     if observations:
         progress(f'Resuming with {len(observations)} previously classified frames.')
@@ -218,7 +226,7 @@ def scan(path, duration, model, categories, step, cancelled, progress, cache_dir
         if not ok:
             raise ValueError(f'Cannot decode the frame near {t:.1f}s. No scan results were applied.')
         try:
-            observations[t] = classify(frame, model, categories, cancelled=cancelled, strict_gore=strict_gore)
+            observations[t] = classify(frame, model, categories, cancelled=cancelled, strict_gore=strict_gore, **({"precision":precision} if precision is not None else {}))
         except ModelResponseError as e:
             recovery = (' Completed frames are saved; Scan / resume reuses them with the same model and settings.'
                         if checkpoint else '')
