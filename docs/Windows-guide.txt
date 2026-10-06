@@ -1,7 +1,7 @@
-SceneSieve 3.24 — standalone Windows app with first-run downloads
+SceneSieve 3.25 — standalone Windows app with first-run downloads
 
 STARTING
-Run SceneSieve-Windows-Standalone-v3.24.exe. No Python, mpv, FFmpeg, or Ollama
+Run SceneSieve-Windows-Standalone-v3.25.exe. No Python, mpv, FFmpeg, or Ollama
 installation is required. The executable contains only the app and setup code.
 First launch downloads checksum-pinned Python/support libraries, mpv, FFmpeg,
 7-Zip's extractor, and Ollama. This requires internet access and several GB of
@@ -506,3 +506,15 @@ The separate preview-audio checkbox has been removed. Switching modes during
 a preview keeps its padded bounds. Returning to normal playback keeps the mode.
 A fully skipped segment stays paused with an explanatory message; select Original
 to inspect that segment.
+
+INCREMENTAL PREVIEW (3.25)
+Filtered playback now joins original untouched footage with cached rendered
+clips for affected ranges. Local edits rebuild only affected clips; unrelated
+clips are reused. Long affected ranges are divided into at most 10-second pieces.
+Review flags and subtitle changes do not invalidate rendered clips. A segment
+preview prepares only its requested padded interval. Preview caches are temporary
+and removed when the app closes. Source-file changes invalidate the cache.
+Whole-track normalization still needs a continuous render for consistent volume;
+changing its audio treatments may require another continuous pass. Normalized
+previews are reused when only review flags or subtitles change.
+Final video export still renders and assembles the complete output file.
