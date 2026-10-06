@@ -1,7 +1,7 @@
-SceneSieve 3.27 — standalone Windows app with first-run downloads
+SceneSieve 3.28 — standalone Windows app with first-run downloads
 
 STARTING
-Run SceneSieve-Windows-Standalone-v3.27.exe. No Python, mpv, FFmpeg, or Ollama
+Run SceneSieve-Windows-Standalone-v3.28.exe. No Python, mpv, FFmpeg, or Ollama
 installation is required. The executable contains only the app and setup code.
 First launch downloads checksum-pinned Python/support libraries, mpv, FFmpeg,
 7-Zip's extractor, and Ollama. This requires internet access and several GB of
@@ -538,3 +538,27 @@ apply only to the selected intervals. Empty selection no longer changes gain
 across the whole video, and unsaved timeline marks are not adjustment targets.
 The existing whole-track normalization control also requires a selected finding.
 Speech/word/level detection controls remain available to create findings first.
+
+AUTOMATIC MODE AND DETECTION BALANCE (3.28)
+The welcome dialog has a third drop target: Automatic. Drop a video there or
+click it and choose one. The editor is never shown in this mode. A progress
+window runs the scan, then export options appear. Choose a destination, filename
+and format. The app closes after successful export or cancellation. Errors stay
+in the progress window; failed exports can return to export options for retry.
+Automatic mode uses all video shortcuts except Insects and Spiders, plus all
+English audio keyword shortcuts. Visual matches and spoken-word matches become
+Skip ranges. It uses the most inclusive detection setting, 0.5-second sampling
+and 1 second of padding. The selected local vision model is downloaded if needed;
+the small speech model is used when audio exists. Processing stays local.
+This is an attempt at an all-ages edit, not a safety certification. Sampled
+vision can miss events, keyword lists are English and are not comprehensive,
+and broad filtering can remove harmless scenes. No output is marked guaranteed
+safe. Exporting JSON preserves source timestamps and automatic_settings metadata.
+In the regular editor, Detection balance replaces the Precise detection toggle.
+Its five positions run from Most inclusive to Most precise. Broader settings
+include plausible or ambiguous indications; precise settings demand clearer
+visual evidence and add confirmation passes. These are model instructions and
+verification policies, not calibrated confidence percentages. The default stays
+Most precise. Changing the slider affects the next scan and uses a separate
+checkpoint cache. The wizard keeps its existing precision checkbox.
+Video and audio shortcut dropdowns now appear above their manually typed fields.
