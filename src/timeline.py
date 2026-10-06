@@ -27,15 +27,10 @@ class Timeline(QWidget):
     def time_at(self,x):return max(0,min(self.duration,self.left+x/max(1,self.width())*self.span))
     def graph_bottom(self):return self.height()-max(22,self.fontMetrics().height()+8)
     def virtual_gain_range(self):
-        if self.selection and self.selection[0]!=self.selection[1]:
-            target=tuple(sorted(self.selection))
-            if any(s.get('action')=='gain' and abs(s['start']-target[0])<.001 and abs(s['end']-target[1])<.001 for s in self.scenes):return None
-            return target
-        if 0<=self.selected<len(self.scenes):
+        if self.selected in self.selected_rows and 0<=self.selected<len(self.scenes):
             scene=self.scenes[self.selected]
             if scene.get('action')!='gain':return scene['start'],scene['end']
-        if any(s.get('action')=='gain' and s['start']==0 and s['end']==self.duration for s in self.scenes):return None
-        return (0,self.duration) if self.duration else None
+        return None
     def gain_y(self,db):
         middle=(30+self.graph_bottom()-4)/2;half=middle-30
         db=max(-60,min(12,db))
@@ -112,7 +107,7 @@ class Timeline(QWidget):
                     self.drag=(edge,self.selected);self.selection=(s['start'],s['end']);return
         for i in reversed(range(len(self.scenes))):
             s=self.scenes[i]
-            if s.get('action')=='gain' and s['start']<=t<=s['end'] and abs(event.position().y()-self.gain_y(s.get('gain_db',0)))<=9:
+            if i in self.selected_rows and s.get('action')=='gain' and s['start']<=t<=s['end'] and abs(event.position().y()-self.gain_y(s.get('gain_db',0)))<=9:
                 self.selected=i;self.sceneSelected.emit(i);self.drag=('gain',i,t,event.position().x(),event.position().y());self.gain_preview=(i,s.get('gain_db',0));self.update();return
         target=self.virtual_gain_range()
         if target and target[0]<=t<=target[1] and abs(event.position().y()-self.gain_y(0))<=9:

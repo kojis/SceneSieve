@@ -446,11 +446,12 @@ class Window(QMainWindow):
         if self.doc and len(rows)==1:
             scene=self.doc['scenes'][rows[0]];self.seek_source(scene['start']);self.subtitle_sidebar.follow(scene['start'],scene['end'])
     def change_timeline_gain(self,row,db):
-        if not self.doc:return
+        if not self.doc or not self.selected_rows():return
+        rows=self.selected_rows()
         if row<0:
-            target=self.timeline.virtual_gain_range() or (0,self.doc['duration'])
-            self.set_gain_interval(*target,db)
-        elif row<len(self.doc['scenes']) and self.doc['scenes'][row].get('action')=='gain':
+            for start,end in list(dict.fromkeys((self.doc['scenes'][r]['start'],self.doc['scenes'][r]['end']) for r in rows)):
+                self.set_gain_interval(start,end,db)
+        elif row in rows and self.doc['scenes'][row].get('action')=='gain':
             scene=self.doc['scenes'][row];scene['gain_db']=db;scene['reviewed']=True;self.dirty=True;self.update_summary()
     def set_gain_interval(self,start,end,db):
         for i,scene in enumerate(self.doc['scenes']):
@@ -463,10 +464,8 @@ class Window(QMainWindow):
     def step_timeline_gain(self,step):
         if not self.doc:return
         rows=self.selected_rows()
-        if self.mark_start is not None and self.mark_end is not None and self.mark_end>self.mark_start:
-            intervals=[(self.mark_start,self.mark_end)]
-        elif rows:intervals=list(dict.fromkeys((self.doc['scenes'][r]['start'],self.doc['scenes'][r]['end']) for r in rows))
-        else:intervals=[(0,self.doc['duration'])]
+        if not rows:return
+        intervals=list(dict.fromkeys((self.doc['scenes'][r]['start'],self.doc['scenes'][r]['end']) for r in rows))
         for start,end in intervals:
             current=next((s.get('gain_db',0) for s in self.doc['scenes'] if s.get('action')=='gain' and abs(s['start']-start)<.001 and abs(s['end']-end)<.001),0)
             self.set_gain_interval(start,end,max(-60,min(12,current+step)))
@@ -559,6 +558,7 @@ class Window(QMainWindow):
         self.job_active=False
         for b in self.buttons:b.setEnabled(True)
         self.content.setEnabled(self.doc is not None)
+        self.audio_panel.update_apply_state()
     def discard(self):
         if not self.dirty:return True
         choice=QMessageBox.question(self,'Unsaved scenes','Save your scene changes before continuing?',QMessageBox.StandardButton.Save|QMessageBox.StandardButton.Discard|QMessageBox.StandardButton.Cancel)

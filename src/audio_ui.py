@@ -29,7 +29,7 @@ class AudioPanel(QWidget):
         self.button(row,'Find words',self.find_words)
         self.preset_dropdown=presets.buttons(layout,presets.AUDIO,self.audio_preset)
         preset_note=QLabel('Audio shortcuts use English keyword lists, not context detection. Clear the preset to enter custom words. Review matches; ambiguous terms can produce false positives.');preset_note.setWordWrap(True);layout.addWidget(preset_note)
-        layout=section('Word treatment')
+        layout=section('Word treatment');self.treatment_group=layout.parentWidget();self.treatment_group.setEnabled(False)
         row=QHBoxLayout();layout.addLayout(row)
         self.mode=QComboBox();self.mode.addItem('Mute','duck');self.mode.addItem('Bleep tone','bleep');self.mode.addItem('Spoken replacement','replace');self.mode.addItem('Distort','distort');self.mode.setToolTip('Distort replaces the waveform with noise shaped by its volume, preserving timing and rhythm. Review the result; use Mute for silence.');row.addWidget(QLabel('Word treatment'));row.addWidget(self.mode)
         self.phrase=QComboBox();self.phrase.addItems(['Darn!','Heck!','Oh, shoot!','Good grief!','Oh, bother!','Custom']);self.phrase.setAccessibleName('Spoken replacement phrase');row.addWidget(self.phrase)
@@ -55,13 +55,13 @@ class AudioPanel(QWidget):
         self.normalize.toggled.connect(self.normalize_changed)
         from export_ui import ExportPanel
         self.export_panel=ExportPanel(self)
-        self.info=QLabel('Speech is processed locally. Models download on first use. Subtitle matches with sentence-level timing require boundary review.\nAudio filters use the first audio track. Export keeps the first video/audio tracks and replaces subtitles with the filtered transcript.');self.info.setWordWrap(True);root.addWidget(self.info);root.addStretch()
+        self.info=QLabel('Speech is processed locally. Models download on first use. Subtitle matches with sentence-level timing require boundary review.\nAudio filters use the first audio track. Export keeps the first video/audio tracks and replaces subtitles with the filtered transcript.');self.info.setWordWrap(True);root.addWidget(self.info);root.addStretch();self.update_apply_state()
     def button(self,row,text,fn):
         b=QPushButton(text);b.clicked.connect(fn);row.addWidget(b);return b
     def spin(self,row,label,value,low,high,suffix):
         caption=QLabel(label);row.addWidget(caption);s=QDoubleSpinBox();s.caption=caption;s.setRange(low,high);s.setValue(value);s.setSuffix(suffix);row.addWidget(s);return s
     def normalize_changed(self,value):
-        if self.w.doc:self.w.doc['normalize_audio']=value;self.w.dirty=True;self.w.update_summary()
+        if self.w.doc and self.w.selected_rows():self.w.doc['normalize_audio']=value;self.w.dirty=True;self.w.update_summary()
     def job(self,fn,done):
         self.w.cancel.clear();self.w.run_job(fn,done,True)
     def set_cues(self,cues):
@@ -158,7 +158,11 @@ class AudioPanel(QWidget):
         self.update_apply_state()
     def update_apply_state(self,*_):
         if not hasattr(self,'apply_button'):return
-        rows=self.w.selected_rows() if self.w.doc else []
+        rows=[r for r in self.w.selected_rows() if 0<=r<len(self.w.doc['scenes'])] if self.w.doc else []
+        eligible=[r for r in rows if self.w.doc['scenes'][r].get('action') in ('duck','bleep','replace','distort')]
+        self.treatment_group.setEnabled(bool(eligible))
+        self.treatment_group.setToolTip('Select a word/audio finding to adjust its treatment.' if not eligible else '')
+        if hasattr(self,'normalize'):self.normalize.setEnabled(bool(rows))
         keys=['action']
         mode=self.mode.currentData()
         keys+=['level'] if mode=='duck' else [] if mode=='distort' else ['replacement_level','frequency' if mode=='bleep' else 'replacement']
