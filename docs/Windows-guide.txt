@@ -1,7 +1,7 @@
-SceneSieve 3.26 — standalone Windows app with first-run downloads
+SceneSieve 3.27 — standalone Windows app with first-run downloads
 
 STARTING
-Run SceneSieve-Windows-Standalone-v3.26.exe. No Python, mpv, FFmpeg, or Ollama
+Run SceneSieve-Windows-Standalone-v3.27.exe. No Python, mpv, FFmpeg, or Ollama
 installation is required. The executable contains only the app and setup code.
 First launch downloads checksum-pinned Python/support libraries, mpv, FFmpeg,
 7-Zip's extractor, and Ollama. This requires internet access and several GB of
@@ -528,3 +528,13 @@ filtered subtitles replace the matching text. Original mode remains unchanged.
 Findings display original text -> replacement to make the saved change visible.
 Selection is retained after applying. Apply is disabled when there are no pending
 changes, no eligible selection, or blank custom replacement text.
+
+SELECTION-REQUIRED AUDIO ADJUSTMENTS (3.27)
+Word treatment, custom phrase, voice, tone, replacement volume and Apply are
+disabled until a word/audio finding is selected. Clearing the selection disables
+them again; selecting only visual findings does not enable word treatments.
+Timeline gain dragging and Up/Down adjustments require findings selection and
+apply only to the selected intervals. Empty selection no longer changes gain
+across the whole video, and unsaved timeline marks are not adjustment targets.
+The existing whole-track normalization control also requires a selected finding.
+Speech/word/level detection controls remain available to create findings first.
