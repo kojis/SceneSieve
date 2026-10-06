@@ -74,10 +74,10 @@ class EmbeddedPlayer(QObject):
             if args[:2]==('set_property','af'):
                 self.command_serial+=1;payload['request_id']=self.command_serial;self.checked_commands[self.command_serial]='Audio filter'
             self.socket.write((json.dumps(payload)+'\n').encode())
-    def load(self,path,ranges,position=0.,paused=True,audio_path=None):
+    def load(self,path,ranges,position=0.,paused=True,audio_path=None,rendered=False):
         if not self.ready:
-            self.pending=(path,ranges,position,paused,audio_path);return
-        self.audio_path=audio_path
+            self.pending=(path,ranges,position,paused,audio_path,rendered);return
+        self.rendered=rendered;self.audio_path=audio_path
         self.ranges=list(ranges);self.position=position;self.paused=paused;self.loading=True
         self.after_load=[]
         self.command('set_property','pause',True)

@@ -101,7 +101,7 @@ def word_scenes(cues,terms,duration,amount):
         if b>a:out.append(dict(start=a,end=b,category='spoken word',action='duck',level=amount/100,enabled=True,reviewed=False,source='speech-search',text=match.group(),cue_ids=ids,precision='word' if all(cues[i].get('precision')=='word' for i in ids) else 'cue',redactions={str(i):[max(0,match.start()-x),min(y-x,match.end()-x)] for x,y,i in spans if i in ids}))
     return out
 
-def audio_scenes(doc):return [s for s in doc['scenes'] if s['enabled'] and s.get('action') in ('duck','gain','bleep','replace')]
+def audio_scenes(doc):return [s for s in doc['scenes'] if s['enabled'] and s.get('action') in ('duck','gain','bleep','replace','distort')]
 def audio_filter(doc,start=0,normalize=False,replacement_start=None):
     filters=[]
     if normalize:filters.append('dynaudnorm=f=250:g=15:p=0.9:m=4')
@@ -112,11 +112,16 @@ def audio_filter(doc,start=0,normalize=False,replacement_start=None):
     for s in audio_scenes(doc):
         if s['action'] in ('bleep','replace') and s.get('_mute_end',s['end'])>s['start']:filters.append(f"volume=0:enable='between(t,{s['start']-start:.6f},{s.get('_mute_end',s['end'])-start:.6f})'")
         if s['action']=='duck':filters.append(f"volume={s.get('level',0):.8f}:enable='between(t,{s['start']-start:.6f},{s['end']-start:.6f})'")
+    for s in audio_scenes(doc):
+        if s['action']=='distort':
+            # Sample-accurate noise modulation keeps the amplitude envelope, but
+            # discards the waveform carrying recognizable pitch and speech.
+            filters.append(f"aeval=exprs='if(between(t,{s['start']-start:.6f},{s['end']-start:.6f}),abs(val(ch))*(2*random(0)-1),val(ch))':c=same")
     import replacements
     return replacements.graph(doc,start if replacement_start is None else replacement_start,','.join(filters) or 'anull')
 
 def subtitle_text(doc,kept):
-    cues=doc.get('subtitles',[]);blocked=[s for s in audio_scenes(doc) if s['action'] in ('duck','bleep','replace')];events=[];offset=0.
+    cues=doc.get('subtitles',[]);blocked=[s for s in audio_scenes(doc) if s['action'] in ('duck','bleep','replace','distort')];events=[];offset=0.
     for a,b in kept:
         for cue_index,c in enumerate(cues):
             x,y=max(a,c['start']),min(b,c['end'])
@@ -144,7 +149,7 @@ def subtitle_text(doc,kept):
 
 def display_subtitles(doc):
     if not doc.get('subtitles'):return []
-    if not any(s.get('action') in ('duck','bleep','replace') for s in audio_scenes(doc)):return doc['subtitles']
+    if not any(s.get('action') in ('duck','bleep','replace','distort') for s in audio_scenes(doc)):return doc['subtitles']
     import pysubs2
     text=subtitle_text(doc,[(0,doc['duration'])])
     return [dict(start=c.start/1000,end=c.end/1000,text=c.plaintext,precision='cue') for c in pysubs2.SSAFile.from_string(text,format_='srt')] if text.strip() else []
@@ -158,11 +163,28 @@ def export_media(video,doc,destination,categories,padding,normalize,progress,can
     if audio_only and not has_audio:raise ValueError('This media has no audio track.')
     with tempfile.TemporaryDirectory(prefix='scenesieve-export-',dir=dest.parent) as folder:
         folder=Path(folder);parts=[]
-        for i,(a,b) in enumerate(kept):
-            progress(f'Rendering segment {i+1}/{len(kept)} ({a:.1f}–{b:.1f}s)...')
+        import visual_effects
+        plan=[(a,b,None) for a,b in kept] if audio_only else visual_effects.segments(doc,kept,categories,padding)
+        video_stream=next((s for s in streams if s['codec_type']=='video'),{})
+        for i,(a,b,effect) in enumerate(plan):
+            progress(f'Rendering segment {i+1}/{len(plan)} ({a:.1f}–{b:.1f}s)...')
             part=folder/f'{i:06d}.mkv';parts.append(part)
             cmd=[exe('ffmpeg'),'-v','error','-nostdin','-y','-ss',str(a),'-i',str(video),'-t',str(b-a)]
-            if not audio_only:cmd+=['-map','0:v:0','-c:v','libx264','-preset','fast','-crf','18','-pix_fmt','yuv420p']
+            if not audio_only:
+                vf='null';video_input='0:v:0'
+                if effect and effect['action']=='freeze':
+                    # Hold a frame before the protected interval; at time zero
+                    # there is no preceding safe frame, so hold black instead.
+                    rate=video_stream.get('avg_frame_rate','25/1')
+                    num,den=map(float,rate.split('/'));fps=num/den if den and num else 25
+                    anchor=max(0,effect['start']-2/fps)
+                    cmd=cmd[:-2]+['-ss',str(anchor),'-i',str(video),'-t',str(b-a)]
+                    video_input='1:v:0'
+                    vf=f'trim=end_frame=1,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration={b-a},trim=duration={b-a}'
+                    if effect['start']==0:vf+=',drawbox=color=black:t=fill'
+                elif effect:
+                    vf=visual_effects.spatial_filter(effect['action'],video_stream['width'],video_stream['height'])
+                cmd+=['-map',video_input,'-vf',vf,'-c:v','libx264','-preset','fast','-crf','18','-pix_fmt','yuv420p']
             if has_audio:cmd+=['-map','0:a:0','-af',audio_filter(doc,a,normalize),'-c:a','flac','-ar','48000']
             cmd+=['-sn',str(part)];run(cmd,cancel)
         listing=folder/'concat.txt';listing.write_text('\n'.join("file '"+p.name+"'" for p in parts))

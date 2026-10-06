@@ -73,21 +73,26 @@ class SetupWizard(QWizard):
         layout=QVBoxLayout(page);self.categories=[]
         for title,(_,category) in presets.VIDEO.items():
             check=QCheckBox(title);layout.addWidget(check);self.categories.append((check,category))
+        from visual_effects import OPTIONS
+        self.video_action=QComboBox()
+        for label,value in OPTIONS:self.video_action.addItem(label,value)
+        layout.addWidget(QLabel('When matched'));layout.addWidget(self.video_action)
         self.precise=QCheckBox('Precise detection — verify potential matches');self.precise.setChecked(True);layout.addWidget(self.precise);self.addPage(page)
         page=QWizardPage();page.setTitle('Spoken words');page.setSubTitle('Optional: choose an English preset. Transcription runs if needed.')
         layout=QVBoxLayout(page);self.audio_preset=QComboBox();self.audio_preset.addItem('No spoken-word filtering')
         self.audio_preset.addItems([*presets.AUDIO,'All']);layout.addWidget(self.audio_preset)
-        self.treatment=QComboBox();self.treatment.addItem('Mute','duck');self.treatment.addItem('Bleep','bleep');layout.addWidget(self.treatment)
+        self.treatment=QComboBox();self.treatment.addItem('Mute','duck');self.treatment.addItem('Bleep','bleep');self.treatment.addItem('Distort','distort');layout.addWidget(self.treatment)
         layout.addWidget(QLabel('Spoken replacement voices and phrases can be configured in the editor.'));self.addPage(page)
         self.setButtonText(QWizard.WizardButton.FinishButton,'Open editor')
     def plan(self):
-        return dict(path=self.media.path.text(),categories=', '.join(category for check,category in self.categories if check.isChecked()),words=presets.value(presets.AUDIO,self.audio_preset.currentText()) if self.audio_preset.currentIndex() else '',precise=self.precise.isChecked(),treatment=self.treatment.currentData(),scan=True,audio_preset=self.audio_preset.currentText() if self.audio_preset.currentIndex() else None)
+        return dict(video_action=self.video_action.currentData(),path=self.media.path.text(),categories=', '.join(category for check,category in self.categories if check.isChecked()),words=presets.value(presets.AUDIO,self.audio_preset.currentText()) if self.audio_preset.currentIndex() else '',precise=self.precise.isChecked(),treatment=self.treatment.currentData(),scan=True,audio_preset=self.audio_preset.currentText() if self.audio_preset.currentIndex() else None)
 
 def start_mode(window,mode,path=None,plan=None):
     if mode=='Advanced':
         for name in ('Player','Timeline','Findings','Preview and edit','Detection and export'):window.docks[name].show()
         window.editor_tabs.setCurrentIndex(0);window.docks['Detection and export'].raise_()
     if plan:
+        window.video_action.setCurrentIndex(window.video_action.findData(plan.get('video_action','skip')))
         path=plan['path'];window.categories.setText(plan['categories']);window.strict_gore.setChecked(plan['precise'])
         window.audio_panel.set_word_filter(plan.get('audio_preset'),plan['words']);window.audio_panel.mode.setCurrentIndex(window.audio_panel.mode.findData(plan['treatment']))
     if not path:return

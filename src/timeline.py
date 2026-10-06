@@ -71,7 +71,7 @@ class Timeline(QWidget):
         for i,s in enumerate(self.scenes):
             a,b=self.x_at(s['start']),self.x_at(s['end'])
             if b<0 or a>self.width():continue
-            color=('#69b4cf' if s.get('action') in ('duck','bleep','replace') else '#ad98d6' if s.get('action')=='gain' else '#d56e61') if s['enabled'] and (s.get('action')!='skip' or s['category'] in self.active) else '#405362'
+            color=('#69b4cf' if s.get('action') in ('duck','bleep','replace','distort') else '#ad98d6' if s.get('action')=='gain' else '#d56e61') if s['enabled'] and (s.get('action') not in ('skip','pixelate','blur','blur_strong','freeze') or s['category'] in self.active) else '#405362'
             tint=QColor(color);tint.setAlpha(45 if s.get('action')=='gain' else 80);p.fillRect(QRectF(a,26,max(3,b-a),bottom-26),tint)
             if i==self.selected or i in self.selected_rows:
                 p.setPen(QPen(QColor('#ffe4aa'),2));p.drawRect(QRectF(a,25,max(3,b-a),bottom-25))

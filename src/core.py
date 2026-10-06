@@ -54,7 +54,7 @@ def validate(doc, identity=None):
             raise ValueError('Every scene must have 0 ≤ start < end ≤ video duration.')
         if not isinstance(s['category'], str) or not s['category'].strip():
             raise ValueError('Every scene needs a category.')
-        if s.get('action') not in ('skip','duck','gain','bleep','replace'):
+        if s.get('action') not in ('skip','duck','gain','bleep','replace','distort','pixelate','blur','blur_strong','freeze'):
             raise ValueError('Unsupported scene action.')
         if s['action']=='duck' and not 0<=number(s.get('level',0))<=1:raise ValueError('Audio level must be between zero and one.')
         if s['action']=='gain' and not -60<=number(s.get('gain_db',0))<=24:raise ValueError('Audio gain is out of range.')
@@ -135,5 +135,5 @@ def _mpv_ranges(video,ranges):
 
 def kodi_edl(doc, categories=None, padding=0):
     entries=[(a,b,0) for a,b in cuts(doc,categories,padding)]
-    entries.extend((s['start'],s['end'],1) for s in doc['scenes'] if s['enabled'] and (s.get('action') in ('bleep','replace') or (s.get('action')=='duck' and s.get('level',0)==0)))
+    entries.extend((s['start'],s['end'],1) for s in doc['scenes'] if s['enabled'] and (s.get('action') in ('bleep','replace','distort') or (s.get('action')=='duck' and s.get('level',0)==0)))
     return ''.join(f'{a:.3f} {b:.3f} {action}\n' for a,b,action in sorted(entries))

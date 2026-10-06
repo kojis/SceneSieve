@@ -31,7 +31,7 @@ class AudioPanel(QWidget):
         preset_note=QLabel('Audio shortcuts use English keyword lists, not context detection. Clear the preset to enter custom words. Review matches; ambiguous terms can produce false positives.');preset_note.setWordWrap(True);layout.addWidget(preset_note)
         layout=section('Word treatment')
         row=QHBoxLayout();layout.addLayout(row)
-        self.mode=QComboBox();self.mode.addItem('Mute','duck');self.mode.addItem('Bleep tone','bleep');self.mode.addItem('Spoken replacement','replace');row.addWidget(QLabel('Word treatment'));row.addWidget(self.mode)
+        self.mode=QComboBox();self.mode.addItem('Mute','duck');self.mode.addItem('Bleep tone','bleep');self.mode.addItem('Spoken replacement','replace');self.mode.addItem('Distort','distort');self.mode.setToolTip('Distort replaces the waveform with noise shaped by its volume, preserving timing and rhythm. Review the result; use Mute for silence.');row.addWidget(QLabel('Word treatment'));row.addWidget(self.mode)
         self.phrase=QComboBox();self.phrase.setEditable(True);self.phrase.addItems(['Darn!','Heck!','Oh, shoot!','Good grief!','Oh, bother!']);row.addWidget(self.phrase)
         row=QHBoxLayout();layout.addLayout(row)
         from voices import VoiceCombo
@@ -145,7 +145,7 @@ class AudioPanel(QWidget):
         self.phrase.setVisible(mode=='replace')
         self.frequency.setVisible(mode=='bleep');self.frequency.caption.setVisible(mode=='bleep')
         self.voice.setVisible(mode=='replace');self.voice_label.setVisible(mode=='replace')
-        self.replacement_level.setVisible(mode!='duck');self.replacement_level.caption.setVisible(mode!='duck')
+        self.replacement_level.setVisible(mode in ('bleep','replace'));self.replacement_level.caption.setVisible(mode in ('bleep','replace'))
         if mode=='replace':self.voice.discover()
         self.update_apply_state()
     def update_apply_state(self,*_):
@@ -153,12 +153,12 @@ class AudioPanel(QWidget):
         rows=self.w.selected_rows() if self.w.doc else []
         keys=['action']
         mode=self.mode.currentData()
-        keys+=['level'] if mode=='duck' else ['replacement_level','frequency' if mode=='bleep' else 'replacement']
+        keys+=['level'] if mode=='duck' else [] if mode=='distort' else ['replacement_level','frequency' if mode=='bleep' else 'replacement']
         if mode=='replace':keys.append('voice')
         changed=False
         for row in rows:
             scene=self.w.doc['scenes'][row]
-            if scene.get('action') not in ('duck','bleep','replace'):continue
+            if scene.get('action') not in ('duck','bleep','replace','distort'):continue
             target=dict(action=mode,level=0,replacement=self.phrase.currentText().strip(),frequency=self.frequency.value(),voice=self.voice.currentData() or '',replacement_level=self.replacement_level.value()/100)
             defaults=dict(level=0,replacement='Darn!',frequency=1000,voice='',replacement_level=.15)
             changed|=any(scene.get(k,defaults.get(k))!=target[k] for k in keys)
@@ -170,7 +170,7 @@ class AudioPanel(QWidget):
     def apply_selected(self):
         if not self.apply_button.isEnabled():return
         try:
-            rows=[r for r in self.w.selected_rows() if self.w.doc['scenes'][r]['action'] in ('duck','bleep','replace')]
+            rows=[r for r in self.w.selected_rows() if self.w.doc['scenes'][r]['action'] in ('duck','bleep','replace','distort')]
             if not rows:raise ValueError('Select word/audio-replacement ranges in the range list first.')
             scenes=[self.treatment(self.w.doc['scenes'][r]) for r in rows]
             def done(prepared):

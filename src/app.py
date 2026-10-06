@@ -30,6 +30,7 @@ import media
 import replacements
 import player_exports
 import presets
+import visual_effects
 from audio_ui import AudioPanel
 VIDEO_EXTENSIONS = {'.mp4', '.mkv', '.avi', '.mov', '.webm', '.m4v', '.mpg',
                     '.mpeg', '.wmv', '.flv', '.ts', '.mts', '.m2ts', '.vob', '.ogv', '.3gp'}
@@ -61,7 +62,10 @@ class SceneDialog(QDialog):
         self.category.setEditable(True)
         self.category.addItems(['gore','blood','violence','other'])
         self.category.setCurrentText(scene['category'])
-        self.action=QComboBox();self.action.addItems(['skip','duck','gain','bleep','replace']);self.action.setCurrentText(scene.get('action','skip'))
+        from visual_effects import OPTIONS
+        self.action=QComboBox()
+        for label,value in (*OPTIONS,('Mute / duck','duck'),('Gain','gain'),('Bleep','bleep'),('Spoken replacement','replace'),('Distort','distort')):self.action.addItem(label,value)
+        self.action.setCurrentIndex(self.action.findData(scene.get('action','skip')))
         self.audio_level=QDoubleSpinBox();self.audio_level.setRange(0,100);self.audio_level.setValue(scene.get('level',0)*100);self.audio_level.setSuffix(' % remaining')
         self.gain=QDoubleSpinBox();self.gain.setRange(-60,24);self.gain.setValue(scene.get('gain_db',0));self.gain.setSuffix(' dB')
         form.addRow('Action',self.action);form.addRow('Word audio',self.audio_level);form.addRow('Audio gain',self.gain)
@@ -73,8 +77,8 @@ class SceneDialog(QDialog):
         if scene.get('voice'):self.voice.addItem(scene['voice'],scene['voice']);self.voice.setCurrentIndex(1)
         form.addRow('Voice',self.voice)
         def treatment_visibility():
-            mode=self.action.currentText()
-            for field,visible in [(self.frequency,mode=='bleep'),(self.voice,mode=='replace'),(self.replacement,mode=='replace'),(self.replacement_level,mode in ('bleep','replace'))]:
+            mode=self.action.currentData()
+            for field,visible in [(self.audio_level,mode=='duck'),(self.gain,mode=='gain'),(self.frequency,mode=='bleep'),(self.voice,mode=='replace'),(self.replacement,mode=='replace'),(self.replacement_level,mode in ('bleep','replace'))]:
                 field.setVisible(visible);form.labelForField(field).setVisible(visible)
             if mode=='replace':self.voice.discover()
         self.action.currentTextChanged.connect(treatment_visibility);treatment_visibility()
@@ -96,7 +100,7 @@ class SceneDialog(QDialog):
             if not 0 <= a < b <= self.duration or not category:
                 raise ValueError('Choose a category and valid start/end times within the video.')
             self.value = {**self.original,'start':a,'end':b,'category':category,'enabled':self.enabled.isChecked(),
-                          'reviewed':self.reviewed.isChecked(),'action':self.action.currentText(),'level':self.audio_level.value()/100,'gain_db':self.gain.value(),'replacement':self.replacement.text().strip(),'voice':self.voice.currentData() or '','frequency':self.frequency.value(),'replacement_level':self.replacement_level.value()/100,'source':'manual'}
+                          'reviewed':self.reviewed.isChecked(),'action':self.action.currentData(),'level':self.audio_level.value()/100,'gain_db':self.gain.value(),'replacement':self.replacement.text().strip(),'voice':self.voice.currentData() or '','frequency':self.frequency.value(),'replacement_level':self.replacement_level.value()/100,'source':'manual'}
             core.validate({'version':1,'duration':self.duration,'scenes':[self.value]})
             self.accept()
         except Exception as e:
@@ -237,6 +241,14 @@ class Window(QMainWindow):
         filters=QHBoxLayout();content.addLayout(filters)
         filters.addWidget(QLabel('Padding on each side'))
         self.padding=QDoubleSpinBox(); self.padding.setRange(0,30); self.padding.setSingleStep(.25);self.padding.setValue(.75);self.padding.setSuffix(' s');filters.addWidget(self.padding)
+        effects_row=QHBoxLayout();content.addLayout(effects_row)
+        effects_row.addWidget(QLabel('When matched'))
+        from visual_effects import OPTIONS
+        self.video_action=QComboBox()
+        for label,value in OPTIONS:self.video_action.addItem(label,value)
+        self.video_action.setToolTip('Treatment for the next video scan. Apply changes selected visual findings. Skip is the default.')
+        effects_row.addWidget(self.video_action)
+        apply_effect=QPushButton('Apply to selected');apply_effect.clicked.connect(self.apply_video_action);effects_row.addWidget(apply_effect)
         presets.buttons(content,presets.VIDEO,self.video_preset)
         self.summary=QLabel('No scenes marked.');content.addWidget(self.summary)
         self.strict_gore=QPushButton('Precise detection: ON');self.strict_gore.setCheckable(True)
@@ -363,10 +375,12 @@ class Window(QMainWindow):
         if not self.doc:return
         self.reload_timer.stop()
         position=self.source_position if position is None else position
+        import visual_effects
+        rendered=self.filtered.isChecked() and bool(visual_effects.scenes(self.doc,self.labels(),self.padding.value()))
         audio_path=None
-        if self.filtered.isChecked() and (media.audio_scenes(self.doc) or self.doc.get('normalize_audio')):
+        if self.filtered.isChecked() and (rendered or media.audio_scenes(self.doc) or self.doc.get('normalize_audio')):
             import playback_audio
-            audio_path=playback_audio.cache_path(self.temp.name,self.video,self.doc,self.labels(),self.padding.value())
+            audio_path=playback_audio.cache_path(self.temp.name,self.video,self.doc,self.labels(),self.padding.value(),rendered)
             if not audio_path.exists() and str(audio_path)!=getattr(self,'silent_audio_key',None):
                 if self.job_active:
                     QTimer.singleShot(100,lambda:self.load_embedded(paused,position));return
@@ -375,7 +389,7 @@ class Window(QMainWindow):
                 def ready(result):
                     if result is None:self.silent_audio_key=str(audio_path)
                     QTimer.singleShot(0,lambda:self.load_embedded(paused,position))
-                self.run_job(lambda progress:playback_audio.prepare(audio_path,video,doc,labels,padding,progress,self.cancel),ready,True)
+                self.run_job(lambda progress:playback_audio.prepare(audio_path,video,doc,labels,padding,progress,self.cancel,rendered),ready,True)
                 def failed(_):
                     self.filtered.blockSignals(True);self.filtered.setChecked(self.playback_mode=='filtered');self.filtered.blockSignals(False)
                 self.worker.failure.connect(failed)
@@ -387,11 +401,13 @@ class Window(QMainWindow):
                 self.embedded.pause();self.error('These filters exclude the entire video. Disable filtering to edit the ranges.');return
             self.embedded.start(self.mpv())
             if self.filtered.isChecked():
-                self.jobs+=1;path=Path(self.temp.name)/f'embedded-{self.jobs}.edl'
-                core.atomic_text(path,core.mpv_edl(self.video,self.doc,self.labels(),self.padding.value()))
+                if rendered:path=audio_path
+                else:
+                    self.jobs+=1;path=Path(self.temp.name)/f'embedded-{self.jobs}.edl'
+                    core.atomic_text(path,core.mpv_edl(self.video,self.doc,self.labels(),self.padding.value()))
                 self.playback_mode='filtered'
             else:path=self.video;self.playback_mode='original'
-            self.embedded.load(path,ranges,position,paused,audio_path=audio_path)
+            self.embedded.load(path,ranges,position,paused,audio_path=None if rendered else audio_path,rendered=rendered)
         except Exception as e:self.error(str(e))
     def original_for_edit(self):
         if not self.doc:return
@@ -585,7 +601,7 @@ class Window(QMainWindow):
         self.table.blockSignals(True);self.table.setRowCount(len(self.doc['scenes']))
         for row,s in enumerate(self.doc['scenes']):
             check=QTableWidgetItem();check.setFlags(Qt.ItemFlag.ItemIsEnabled|Qt.ItemFlag.ItemIsSelectable|Qt.ItemFlag.ItemIsUserCheckable);check.setCheckState(Qt.CheckState.Checked if s['enabled'] else Qt.CheckState.Unchecked);self.table.setItem(row,0,check)
-            for col,value in enumerate([core.clock(s['start']),core.clock(s['end']),s['category'],'Checked' if s['reviewed'] else 'Needs review',s.get('source','imported'),s.get('action','skip'),s.get('text','')],1):self.table.setItem(row,col,QTableWidgetItem(value))
+            for col,value in enumerate([core.clock(s['start']),core.clock(s['end']),s['category'],'Checked' if s['reviewed'] else 'Needs review',s.get('source','imported'),visual_effects.LABELS.get(s.get('action'),s.get('action','skip')),s.get('text','')],1):self.table.setItem(row,col,QTableWidgetItem(value))
         self.table.blockSignals(False)
         self.update_summary()
         self.preview.setPixmap(QPixmap());self.preview.setText('Scene preview is hidden.\nSelect a scene and choose Reveal frame.')
@@ -606,6 +622,9 @@ class Window(QMainWindow):
         pending=sum(not s['reviewed'] for s in self.doc['scenes'])
         self.summary.setText(f'{len(ranges)} skip ranges • {excluded:.2f}s excluded • {pending} scenes need review' if ranges else 'No matching skip ranges — playback will include the entire video.')
         audio_count=len(media.audio_scenes(self.doc))
+        import visual_effects
+        visual_count=len(visual_effects.scenes(self.doc,self.labels(),self.padding.value()))
+        if visual_count:self.summary.setText(self.summary.text()+f' • {visual_count} visual effects')
         if audio_count:self.summary.setText(self.summary.text()+f' • {audio_count} audio filters')
         self.timeline.set_data(self.doc['duration'],self.doc['scenes'],self.labels())
         if self.filtered.isChecked() and self.embedded.ready:self.embedded.pause();self.reload_timer.start()
@@ -765,7 +784,7 @@ class Window(QMainWindow):
         def done(data):self.waveform.data=data;self.waveform.update();self.status.setText('Audio waveform ready.')
         self.run_job(lambda p:media.waveform(video,p,self.cancel),done,True)
     def audio_seek_settled(self,position):
-        if getattr(self.embedded,'audio_path',None):return
+        if getattr(self.embedded,'audio_path',None) or getattr(self.embedded,'rendered',False):return
         if self.doc and any(s.get('action') in ('bleep','replace') for s in media.audio_scenes(self.doc)):
             self.embedded.position=position;self.apply_audio()
     def apply_audio(self):
@@ -782,7 +801,7 @@ class Window(QMainWindow):
                     x,y=max(a,scene['start']),min(b,finish)
                     if y>x:mapped.append({**scene,'start':offset+x-a,'end':offset+y-a,'_mute_end':offset+min(b,scene['end'])-a,'_replacement_end':offset+y-a,'_replacement_source':scene,'_replacement_offset':x-scene['start']})
                 offset+=b-a
-            if getattr(self.embedded,'audio_path',None):self.embedded.command('set_property','af','')
+            if getattr(self.embedded,'audio_path',None) or getattr(self.embedded,'rendered',False):self.embedded.command('set_property','af','')
             else:
                 filt=media.audio_filter({'scenes':mapped},normalize=bool(self.doc.get('normalize_audio')),replacement_start=playback_time(self.embedded.position,self.embedded.ranges))
                 self.embedded.command('set_property','af','lavfi=['+filt+']')
@@ -799,14 +818,23 @@ class Window(QMainWindow):
     def video_preset(self,name):
         if not self.doc or (self.job_active):return
         self.categories.setText(presets.value(presets.VIDEO,name));self.scan_video()
+    def apply_video_action(self):
+        if not self.doc:return
+        from visual_effects import ACTIONS
+        rows=[r for r in self.selected_rows() if self.doc['scenes'][r]['action'] in ('skip',*ACTIONS)]
+        if not rows:self.status.setText('Select visual findings to apply this treatment.');return
+        for row in rows:self.doc['scenes'][row]['action']=self.video_action.currentData()
+        self.dirty=True;self.refresh()
+        self.status.setText(f'Applied {self.video_action.currentText()} to {len(rows)} visual findings. Select Filtered to preview.')
     def scan_video(self):
         if not self.doc:return
         model=self.selected_model();labels=sorted(self.labels())
         if not model or not labels:self.error('Find a local vision model and enter at least one category.');return
         self.cancel.clear();self.status.setText('Starting scan. Video frames are sent only to local Ollama.')
         path,duration,step=self.video,self.doc['duration'],self.step.value()
-        strict_gore=self.strict_gore.isChecked()
+        strict_gore=self.strict_gore.isChecked();action=self.video_action.currentData()
         def done(scenes):
+            scenes=[{**s,'action':action} for s in scenes]
             self.doc['scenes'] = [s for s in self.doc['scenes']
                                   if not (s.get('source') == 'ollama:'+model and s['category'] in labels)]
             self.doc['scenes'].extend(scenes);self.dirty=True;self.refresh()

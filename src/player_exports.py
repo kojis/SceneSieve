@@ -4,12 +4,13 @@ from xml.etree.ElementTree import Element,SubElement,tostring,register_namespace
 import core
 FORMATS={'Kodi EDL':'.edl','MPlayer EDL':'.edl','mpv EDL':'.mpv.edl','VLC playlist':'.xspf'}
 def limitation(kind,doc):
-    audio=[s for s in doc['scenes'] if s['enabled'] and s.get('action')!='skip']
+    audio=[s for s in doc['scenes'] if s['enabled'] and s.get('action') in ('duck','gain','bleep','replace','distort')]
     if kind in ('Kodi EDL','MPlayer EDL'):
-        message='Preserves video cuts and complete mutes. Bleeps/spoken substitutions become mutes. Partial volume changes, gain, normalization and subtitle changes are not included.'
-    else:message='Preserves video cuts only. Audio muting, volume changes, bleeps, spoken substitutions, normalization and filtered subtitles are not included.'
+        message='Preserves video cuts and complete mutes. Bleeps, spoken substitutions and distortion become mutes. Partial volume changes, gain, normalization and subtitle changes are not included.'
+    else:message='Preserves video cuts only. Audio muting, volume changes, bleeps, spoken substitutions, distortion, normalization and filtered subtitles are not included.'
     if kind=='VLC playlist':message+=' Retained sections are separate playlist entries; transitions may pause and seeking depends on VLC/version.'
     message+=f'\nThis project has {len(audio)} enabled audio adjustments'+(' and normalization enabled.' if doc.get('normalize_audio') else '.')
+    message+='\nPixelate, Blur, More blur and Freeze frame are not included in player sidecars. Export filtered video to preserve these visual effects.'
     return message+'\nExport filtered video/audio to preserve the complete edits. Keep this sidecar with the original media, not an already filtered export.'
 def intervals(doc,categories,padding):
     ranges=core.kept_ranges(doc['duration'],core.cuts(doc,categories,padding))
@@ -18,7 +19,7 @@ def intervals(doc,categories,padding):
 
 def mplayer_edl(doc,categories,padding):
     cuts=core.cuts(doc,categories,padding)
-    mutes=sorted((s['start'],s['end']) for s in doc['scenes'] if s['enabled'] and (s['action'] in ('bleep','replace') or s['action']=='duck' and s.get('level',0)==0))
+    mutes=sorted((s['start'],s['end']) for s in doc['scenes'] if s['enabled'] and (s['action'] in ('bleep','replace','distort') or s['action']=='duck' and s.get('level',0)==0))
     merged=[]
     for a,b in mutes:
         if merged and a<=merged[-1][1]:merged[-1]=(merged[-1][0],max(b,merged[-1][1]))
