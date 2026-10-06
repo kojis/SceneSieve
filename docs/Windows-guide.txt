@@ -1,7 +1,7 @@
-SceneSieve 3.23 — standalone Windows app with first-run downloads
+SceneSieve 3.24 — standalone Windows app with first-run downloads
 
 STARTING
-Run SceneSieve-Windows-Standalone-v3.23.exe. No Python, mpv, FFmpeg, or Ollama
+Run SceneSieve-Windows-Standalone-v3.24.exe. No Python, mpv, FFmpeg, or Ollama
 installation is required. The executable contains only the app and setup code.
 First launch downloads checksum-pinned Python/support libraries, mpv, FFmpeg,
 7-Zip's extractor, and Ollama. This requires internet access and several GB of
@@ -483,8 +483,8 @@ Choose Filtered in the main player to see all applied visual/audio edits.
 Visual effects require a temporary rendered preview, which can take time and
 disk space for long videos. A progress dialog appears, and the result is reused
 until edits change. Temporary previews are removed when the app closes.
-The selected-scene review preview intentionally shows original video boundaries;
-use the main Filtered toggle to inspect the visual treatment itself.
+The selected-scene preview follows the Original / Filtered toggle, including
+visual effects, audio treatments and cuts in Filtered mode.
 Export filtered video preserves all effects. Kodi/MPlayer sidecars turn Distort
 into a mute; no supported sidecar preserves visual effects. The export warning
 explains these limitations. Export video when recipients need those effects.
@@ -496,3 +496,13 @@ Choose Custom in the phrase list, then type the phrase in the field that appears
 Select existing word findings and click Apply, or Find words to add new matches.
 Apply stays disabled for blank custom text or when no changes are pending.
 The typed phrase is used for filtered playback, exports and filtered subtitles.
+
+PLAYBACK MODE RETENTION (3.24)
+The Original / Filtered toggle is shared by full playback and segment previews.
+Selecting findings, seeking, scanning, applying treatments and loading media
+retain the selected mode. Startup still defaults to Original.
+Original previews play the source; Filtered previews apply edits and skip cuts.
+The separate preview-audio checkbox has been removed. Switching modes during
+a preview keeps its padded bounds. Returning to normal playback keeps the mode.
+A fully skipped segment stays paused with an explanatory message; select Original
+to inspect that segment.
