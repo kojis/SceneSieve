@@ -1,0 +1,458 @@
+SceneSieve 3.14 — standalone Windows app with first-run downloads
+
+STARTING
+Run SceneSieve-Windows-Standalone-v3.19.exe. No Python, mpv, FFmpeg, or Ollama
+installation is required. The executable contains only the app and setup code.
+First launch downloads checksum-pinned Python/support libraries, mpv, FFmpeg,
+7-Zip's extractor, and Ollama. This requires internet access and several GB of
+free disk space. Progress appears in the setup window. If a download fails,
+restart the same executable: verified completed downloads are reused.
+Subsequent launches verify the installed assets and repair missing/changed files.
+No administrator privileges are required.
+
+STORAGE
+%LOCALAPPDATA%\SceneSieve\
+  app-*          Versioned application code
+  python-3.12.10  Private Python and support libraries
+  assets         Player, encoder, AI service and extractor
+  models\vision  Downloaded Ollama models
+  models\speech  Downloaded speech models
+  downloads      Verified installation/download cache
+  data           Settings, waveform cache, scan checkpoints and service logs
+  setup.log      First-run setup/repair details
+Downloads contact the distributors listed in runtime-manifest.json. Scans and
+speech transcription process media locally. No video is uploaded for inference.
+Downloaded models are reused; internet is needed for new models/catalog refresh
+and subtitle URLs, but not for scanning with a cached model.
+
+VISION MODELS
+The model selector lists downloadable local vision variants as well as installed
+models. Find models refreshes the official Ollama catalog. Cloud-only and Mac-only
+MLX tags are excluded. Choose a family first, then a variant where available. The adjacent description
+explains expected speed/resource tradeoffs; these are not gore benchmark scores.
+Models marked [download on scan] download automatically when Scan / resume is
+pressed, then scanning begins. Capability checks reject non-vision/cloud models.
+Large variants can require substantial disk, RAM and GPU memory; availability in
+the catalog does not mean that every model fits your computer. Gore remains the
+only default visual category. Detection can miss content or produce false matches.
+
+EDITOR
+Drop/open a video. Playback, waveform, timeline, range list and details share the
+main screen. Drag the divider below the timeline to allocate space to the editor.
+The lower panels scroll on smaller screens. Audio waveform analysis is cached.
+Space: play/pause (or mark start/end if the checkbox is enabled).
+Left/Right or comma/period: frame step. Ctrl+Left/Right: 5 seconds.
+I/O: mark in/out, then Add selected range. M: mark start/end and add the range.
+[ / ]: previous/next range. + / - or wheel: zoom. Shift-wheel: pan. Ctrl+0: fit.
+Shift-drag timeline: select a new range. Drag a selected edge to trim.
+Shift-click/Ctrl-click/drag across list rows: select multiple entries.
+Enable selected, Disable selected and Remove selected act on all selected rows.
+Double-click one row to edit its times, action and audio level inline.
+Red: video cuts. Blue: word attenuation. Purple: audio gain adjustments.
+The original-video clock is retained while editing. Selecting a range or jogging
+pauses original footage; switch Filtered playback on to hear/see the filters.
+
+AUDIO AND SUBTITLES
+Use the Audio / subtitles / export tab.
+- Generate subtitles / detect speech: downloads the chosen speech model on first
+  use, then transcribes locally on CPU with word timestamps. Base is the default;
+  larger models take longer. Generated words are grouped into readable export cues.
+- Import subtitles: SRT, VTT, ASS or SSA.
+- Use embedded subtitles: select an existing text subtitle track. Bitmap subtitles
+  require OCR, which is not included; generate speech subtitles instead.
+- Find matching subtitles: searches Internet Archive without an account, or
+  OpenSubtitles with your API key. Review title, language, release/file, match and
+  rights information before downloading. OpenSubtitles can match the video hash;
+  title matches are approximate. Verify timing and use the offset field as needed.
+  Public/free access does not guarantee an open reuse licence. View source to
+  check the individual upload. API keys remain in memory for the dialog session.
+  Searches send the title and, for OpenSubtitles, file hash; video is not uploaded.
+- Subtitle URL: paste a direct HTTPS link to a subtitle file.
+- Enter comma-separated words/phrases and click Find words. Word lists can be
+  saved/loaded as text files. Matches appear as editable ranges with action duck.
+- Word audio remaining sets the level during each new match: 0% mutes, 10% retains
+  one tenth amplitude. Edit selected changes an existing match's level. Video is
+  not cut for duck or gain actions. Enabled word matches are omitted from filtered
+  subtitles. Disable a match to retain its original audio and subtitle text.
+- Imported/embedded subtitles usually provide sentence timing, not word timing;
+  those matches attenuate the entire cue until you trim them. Speech timestamps
+  are estimates as well; review boundaries before exporting.
+- Detect audio levels finds sustained loud/quiet RMS regions and adds editable
+  gain suggestions toward Target RMS (limited to +12/-36 dB by the detector).
+  Digital silence is excluded from quiet-region detection.
+- Even out loud/quiet audio applies dynamic normalization and peak limiting.
+  Normalization and gain run before word attenuation so filtered words stay quiet.
+The vertical slider/mute controls preview volume (0–150%); the adjacent meter is
+an estimated source-waveform peak, not a hardware output meter. Preview volume
+is not baked into exports. Use gain ranges/normalization for exported changes.
+
+OUTPUT
+Output folder sets a remembered destination for Save scenes, Export player file,
+filtered media and subtitles. Each save dialog still allows another destination.
+Save scenes stores video cuts, audio filters and transcript in the scene JSON.
+Kodi EDL supports video cuts and complete mutes; partial attenuation, gain and
+normalization require a rendered media export.
+Export filtered video creates MP4/MKV with excluded scenes removed, selected audio
+adjustments applied, and a filtered subtitle track when a transcript is loaded.
+Export filtered audio creates M4A/WAV/FLAC with the same timing/cuts/audio filters.
+Export filtered subtitles creates an SRT retimed to the filtered video.
+A rendered export also writes a matching .filtered.srt sidecar when applicable.
+Video is re-encoded as H.264. Exports use the first video and first audio track;
+other original tracks/chapters are not retained. Original media is preserved.
+The filtered subtitle track comes from the imported/generated transcript, so load
+subtitles first if you want them included. Use a distinct export name.
+Cancel operation cancels scans/rendering; speech cancellation takes effect between
+transcribed segments, and initial speech-model loading/download can take time.
+
+VALIDATION
+53 automated tests passed, plus native embedded-player/multi-selection tests.
+The unified timeline, segment gain creation/editing, model selectors, and both
+export compatibility dialogs were tested. Internet Archive search and download
+were tested live. OpenSubtitles was tested with mocked API responses only; a user
+API key is required to validate that service live. VLC loaded and played a generated
+playlist; sample-exact transitions are not guaranteed.
+Actual encoded output was decoded to verify muted-word audio, video-cut duration,
+subtitle filtering/retiming, and normalized audio export. On-demand Qwen vision and
+Whisper speech downloads/inference were tested. First-run installation and cached
+second launch were tested with the pinned dependencies.
+
+BLEEPS AND SPOKEN SUBSTITUTES (2.1)
+In Audio / subtitles / export, choose a Word treatment before Find words:
+- Reduce / mute keeps the existing attenuation controls.
+- Bleep tone replaces the marked sound with a 100–4000 Hz tone (default 1000 Hz).
+- Spoken replacement uses the default installed Windows system voice. Choose
+  Darn!, Heck!, Oh, shoot!, Good grief!, Oh, bother!, or type a custom short phrase.
+Replacement volume controls the inserted sound separately from playback volume.
+Defaults are 15% peak amplitude; a short fade reduces clicks at the boundaries.
+To change existing words, select their rows, open the Audio tab, choose a treatment,
+and click Apply to selected. Individual ranges can also be edited inline, including
+changing action to bleep or replace, frequency, substitute text and volume.
+The original audio in the marked interval is muted. The entire soundtrack in that
+interval is replaced, including any music/effects there; this is not voice isolation.
+Spoken phrases are sped up if needed to fit; short phrases sound more natural in
+short intervals. Timing is never extended. This uses a synthetic Windows voice,
+not the original speaker's voice. If Windows has no usable voice, use a bleep or
+install a Windows speech voice. No extra voice model or cloud service is required.
+Replacement WAVs are cached in LocalAppData/SceneSieve/data/replacement-audio.
+Both replacements work during filtered playback and video/audio rendering.
+Subtitles show the chosen spoken substitute; bleeped words are omitted.
+Overlapping replacement intervals use the earlier interval's sound first, avoiding
+stacked tones/voices. Review imported sentence-level matches and trim their edges.
+Kodi EDL cannot insert sounds: bleep and spoken-replacement ranges export as mutes.
+
+UNIFIED TIMELINE AND SEGMENT VOLUME (2.2)
+Waveform and marked ranges share one zoomable timeline. Shift-drag an interval,
+then adjust the vertical Segment slider to create an audio gain range. Select
+existing audio ranges to change their volume together. The control shows dB:
+gain ranges use -60 to +12 dB; word attenuation is capped at 0 dB and -60 mutes it.
+For bleeps and spoken substitutions, the slider changes the inserted sound level.
+Video cut ranges are not converted into audio ranges by the slider. The separate
+Preview slider changes only listening volume. Switch Filtered playback on to
+audition segment changes. Save scenes retains all edits in JSON.
+Speech detection also offers a main model size followed by applicable variants;
+descriptions explain speed and language tradeoffs.
+
+PLAYER EXPORTS (2.2)
+Export player file offers:
+- Kodi EDL: cuts and complete mutes. Save alongside the original video using its
+  base name. Bleeps and spoken replacements become mutes.
+- MPlayer EDL: cuts and complete mutes; use mplayer -edl edits.edl video.mkv.
+- mpv EDL: retained video sections only; open the generated .mpv.edl in mpv.
+- VLC playlist: retained sections as separate XSPF entries. Open in VLC. Playback
+  transitions may pause, and seeking accuracy depends on the player/version.
+Compatibility warnings appear before saving and after saving. Sidecars/playlists
+cannot preserve all volume, normalization, replacement sound or subtitle edits.
+Use Export filtered video/audio to bake those edits into a playable media file.
+Keep source media at its existing path for mpv and VLC exports, or re-export after
+moving it. Scene JSON remains the full editable project representation.
+
+VIDEO OVERLAY AND SUBTITLE SIDEBAR (2.3)
+Move the pointer over the video, or click the video, to reveal a central Play/Pause
+button. It hides after 1.8 seconds without pointer activity. The regular transport
+buttons and keyboard shortcuts remain available.
+When subtitles are loaded, a resizable dialogue panel appears beside the video.
+It highlights and scrolls to the nearest cue during playback. While paused, a
+selected scene or Shift-dragged interval highlights the cue with the greatest
+overlap, or the nearest cue if there is no overlap. Click a subtitle to seek to its
+original-video timestamp and clear the previous range selection. This panel shows
+the loaded original transcript for editing, including words selected for filtering.
+Native-player tests verified overlay visibility, clicking, auto-hide, playback and
+editor navigation. UI tests verified cue tracking, seeking and conditional display.
+
+DIALOGUE EXCERPTS AND GAIN AUTOMATION (2.4)
+The dialogue sidebar groups generated word timestamps into readable excerpts,
+breaking at sentence endings, pauses over 0.8 seconds, or approximately 7 seconds /
+110 characters. Existing sentence-level subtitle cues remain intact. This is display
+grouping only: original word timestamps remain available for precise filtering.
+The editor uses a compact dark theme with waveform and gain combined in one graph.
+Gain ranges have a horizontal line across their interval in the shared waveform
+graph. Higher lines mean louder gain; 0 dB is unchanged. Drag a segment line up or
+down to adjust it from -60 to +12 dB, then release to save the change to the project.
+A dot and dB label identify each line; muted colors indicate disabled ranges.
+Create a gain interval by Shift-dragging a range and using the Segment slider.
+Use Filtered playback to audition adjustments, and render media to preserve gain
+for players whose sidecar formats cannot store it. The gain overlay represents each
+individual range; overlapping gains and normalization can affect the final mix.
+
+MEDIA GLYPHS (2.5)
+The transient video overlay uses a large play triangle / pause bars on a fully transparent
+background, with no box, border or shadow. Both transport play buttons follow the current playback state. Frame-step,
+previous/next mark, zoom and fit buttons use locally rendered icons. Hover to see
+each action and keyboard shortcut. File and editing buttons retain descriptive
+text with supporting icons. Icons require no font pack or internet download.
+
+COMBINED WAVEFORM / GAIN GRAPH (2.7)
+Gain lines now overlay the waveform in the same timeline region. The right-side
+dB scale applies to segment gain, not the source waveform amplitude. Drag a purple
+line vertically to change gain; drag selected segment edges to trim time. The
+waveform continues to show source audio. Use Filtered playback to hear edits.
+
+TIMELINE-ONLY VOLUME CONTROLS (2.8 — supersedes older slider instructions)
+The top-right duplicate Play button and all right-side volume/meter widgets are
+removed. The waveform/gain timeline fills the available width. Drag its purple
+gain line vertically. Up/Down adjusts selected intervals by 1 dB; Shift+Up/Down
+adjusts by 0.1 dB. Shift-drag selects an interval; Ctrl+A with timeline focus
+selects the full duration. With no range selected, gain applies to the full video.
+Adjusting a selected video-cut interval adds an audio gain interval without
+changing the video-cut action. Whole-video and local gains can overlap and combine.
+Preview output uses 100% player volume; use system volume for listening level.
+
+VIDEO CLICK AND CENTERED GAIN (2.9)
+Clicking the video toggles play/pause, as does the transparent overlay glyph.
+The timeline gain control is visible whenever media is loaded. Zero gain is
+centered vertically; drag upward for gain up to +12 dB, downward to -60 dB.
+The positive and negative halves use different scales to keep 0 dB centered.
+Existing segment gain lines retain their positions for their saved dB values.
+
+DOCKABLE WORKSPACE AND PREVIEW (3.0 — supersedes earlier layout instructions)
+The Video tab (with a play glyph) contains visual scan settings. Findings and the
+Preview and edit panel are separate from detection tabs. Player, Timeline,
+Findings, Preview and edit, Detection and export, and Subtitles are dockable.
+Drag panel title bars to rearrange or detach them; double-click a title bar to
+float/dock. View restores hidden panels. Layout offers Save layout, Reset layout
+and Lock panels. Saved layouts restore on the next launch. Detection and export
+shares a dock tab group with Findings by default and can be moved independently.
+
+The main transport speed selector offers 0.25x through 3x. This affects listening
+and viewing only; exports retain normal speed.
+
+Preview selected scene now toggles Pause preview / Resume preview. At the end,
+resume restarts the preview range. Apply audio filters in preview is enabled by
+default so word muting, bleeps, substitutions, gain and normalization can be
+auditioned; turn it off to compare original audio. Preview ignores video cuts.
+Normal full-video playback still requires Filtered playback to hear audio edits.
+Previously scene preview always used original audio, making replacements appear
+ineffective. The player now reports audio filter application failures instead of
+silently accepting an unsuccessful request.
+
+Validation: 53 unit tests; native preview pause/resume, speed property, floating
+player dock, active replacement/normalization graph; rendered bleep frequency
+and spoken replacement audio with unchanged duration and filtered subtitles.
+
+CATEGORY DEFAULT (3.1)
+Filter categories starts empty. Placeholder: gore, violence, nudity, mature subject
+matter. Enter the categories you want before scanning; placeholders are examples
+and are not automatically selected.
+
+SCAN PROGRESS (3.2)
+Cancellable operations display a progress dialog with the current stage, measured
+percentage, status text and Cancel button. Frame scanning/refinement use completed
+frame counts; audio analysis/transcription use processed time versus media duration.
+Each stage has its own percentage, so refinement starts at 0% after coarse scanning.
+Model loading stays at 0% until measurable processing starts; vision model download
+progress uses the provider percentage. Cancel waits for the current blocking model
+request or transcription segment to return. Closing the dialog requests cancellation.
+
+PLAYBACK AND REPLACEMENT REPAIRS (3.3)
+Clicking the video or main Play after a preview returns to full-video playback;
+the Preview button alone pauses/resumes the bounded preview. Playback at the end
+of the full video restarts from the beginning.
+Replacement audio now accounts for the playback start/seek offset. Previously a
+mid-range start could mute the original while missing the inserted sound. Both
+bleep and spoken replacement were captured from mpv at a nonzero start time.
+Applying word treatments enables Filtered playback. Returning from a preview with
+audio filters enabled retains filtered playback for the full video.
+The dialogue sidebar now reflects enabled treatments: spoken substitute text is
+shown, and muted/bleeped words are omitted. Disabling a treatment restores its
+original text. Original subtitle data stays intact for editing and detection.
+Validation: 56 unit tests; native preview-to-full playback/click toggling; captured
+1000 Hz bleep and non-silent spoken replacement at initial and mid-range starts.
+
+ONE-CLICK DETECTION PRESETS (3.4)
+Video shortcuts: Gore, Mature subject matter, Nudity, Drugs, Bugs and Spiders, All.
+Each labeled glyph fills Filter categories and starts scanning with the selected
+vision model. All combines the five presets. The field still starts empty.
+Audio shortcuts: Racial slurs, Swear words, Mature subject matter, Drugs, All.
+Each fills the word search field with an editable English starter list and searches
+the loaded transcript. If no transcript is loaded, the selected speech model is
+downloaded/loaded as needed, transcription runs, and the keyword search follows
+automatically in the same cancellable operation. The selected audio treatment
+(mute/attenuation, bleep, or spoken substitute) applies to the resulting matches.
+Audio lists are literal keywords, not semantic/context classifiers. They may miss
+variants and other languages; ambiguous terms may produce false positives. Review
+the populated field and findings. You can edit and save the lists using existing
+word-list controls. Each new audio search replaces previous speech-search matches,
+while preserving manually created and other detector ranges.
+
+WORKSPACE AND NATURAL SPEECH (3.5 — replaces older behavior descriptions)
+Findings stays visible in its own panel. Detection defaults to Video in a separate
+region, with Audio / subtitles and Export as the second and third tabs. Old saved
+layouts are reset once for this change; save the new arrangement from Layout.
+Video and audio scan shortcuts are now icon dropdowns. Choosing an entry fills
+the field and scans as before. Swear words is renamed Derogatory (the same editable
+starter list). Spoken replacement text is visible only when that treatment is chosen.
+The application/executable uses an eye icon. Progress uses a circular percentage
+ring. Clicking the video surface or its surrounding blank player area toggles
+play/pause; transport controls retain their own actions.
+
+Spoken phrases keep their natural generated duration. Only the marked original
+word interval is muted; the replacement voice can continue over the following
+source audio. Video duration is not extended. Phrases stop at the media end or
+removed video portions; overlapping phrases may mix. Bleep duration still follows
+the marked interval. Replacement audio caches use a new version so previously
+shortened generated audio is rebuilt.
+Validation: 57 unit tests, workspace/control checks, circular progress cancellation,
+and a native mpv capture of a 2.474-second spoken phrase replacing a 0.2-second
+word while retaining the source media duration.
+
+AUDIO WORKFLOW AND EXPORT FORM (3.6 — supersedes older controls)
+Find words and audio-level detection keep the Audio / subtitles tab selected.
+New or changed findings receive a brief yellow highlight, including selected rows.
+The treatment button is now Apply. It is disabled with no eligible selected rows,
+or when selected rows already match the active treatment settings. Changing the
+treatment, its phrase, tone or replacement volume enables Apply when relevant.
+The Word audio remaining label/percentage and Load/Save word-list buttons are
+removed. The basic word treatment is Mute; existing project attenuation levels
+remain intact unless you apply a new treatment.
+
+Export is consolidated into one form: Name, Save in folder with Browse, Select
+file type, a description and destination summary, and Export. It supports filtered
+video/audio/subtitles and player sidecars. Existing output replacement requires
+confirmation; player compatibility dialogs remain. Export destination is remembered.
+The duplicated output-folder controls above the player are removed.
+Validation: 57 unit tests plus audio-tab retention, changed-only Apply states,
+finding highlights, removed controls and export destination/type dispatch checks.
+
+SUBTITLE IMPORT DIALOG (3.7)
+Select Import beside Generate subtitles / detect speech. One dialog offers Open
+subtitle file, Find matching subtitles, Import from URL, and Use embedded subtitles.
+Choose an option to open its existing file picker, search, URL or track workflow.
+
+GROUPED CONTROLS AND VOICES (3.8)
+Audio controls are framed as Speech and subtitles, Word detection, Word treatment,
+and Audio levels and normalization. Video detection and export destination/format
+also have logical grouping frames.
+Mute hides Tone, Voice, replacement phrase and Replacement volume. Bleep shows Tone
+and Replacement volume. Spoken replacement shows Voice, phrase and Replacement
+volume; Tone is hidden. The inline scene editor follows the same treatment rules.
+Voice lists enabled installed Windows system voices plus Windows default voice.
+Select a voice, then Apply to update selected replacements, or Find words for new
+matches. The voice is saved in scene data and included in the generated-audio cache
+key, so different voices do not reuse the same recording. Natural spoken duration
+is preserved. A previously selected voice must remain installed to regenerate it.
+Validation: 57 unit tests, Apply/visibility checks, installed voice discovery and
+actual speech generation using the selected Microsoft David Desktop voice.
+
+VIDEO SCAN ROW (3.9)
+Filter categories, Interval (seconds), and Scan now share one row. Interval and
+Scan are to the right of the category field. The button is labeled Scan.
+
+PRECISE DETECTION (3.10)
+The old strict-gore checkbox is now a prominent Precise detection: ON/OFF toggle,
+enabled by default. It requests an additional verification pass for matches in
+every selected video category. Gore retains its anatomical-injury check; other
+categories are rechecked for unambiguous directly visible evidence. This can reduce
+false positives, costs additional scan time, and may miss subtle content. It does
+not change audio keyword detection or reclassify existing findings automatically.
+The scan cache version changed so old unverified category results are not reused.
+Validation: 59 tests, including generic-category rejection and toggle-off behavior.
+
+DIRECT RANGE GESTURES (3.11)
+Press Delete to immediately remove selected findings. With only a pending in/out
+selection, Delete clears that selection. Text fields retain normal Delete editing.
+Drag horizontally along the timeline to define an in/out range without Shift, in
+either direction. Add selected range saves it, just as with Mark in / Mark out.
+A simple click still seeks. Selected boundary handles still trim; gain lines dragged
+vertically still adjust volume, while horizontal drags select a time interval.
+Validation: 59 unit tests and direct gesture checks for forward/reverse selection,
+gain-line horizontal selection, deletion, click seeking and text-field protection.
+
+COMPACT TIMELINE (3.12)
+Removed the bottom Cancel operation button; use Cancel in the operation progress
+dialog. Reduced mark-button height, gaps above the graph and footer spacing, and
+limited excess timeline-panel height. Progress cancellation and range gestures
+were checked after these layout changes.
+
+LAUNCH CHOOSER (3.13)
+On launch, a dialog headed Drop your media asset to... offers three large buttons:
+Wizard — allow the wizard to step you through morality augmentation
+Advanced — Enter an advanced state of [redacted]
+App — Just launch the app...
+Click a button, or drop one supported local video directly on it. Wizard guides
+media selection, video categories, optional word filtering and a final choice to
+start scans. No video categories are preselected. Advanced opens the editing
+panels; App opens the regular workspace. Dropped files load in the chosen mode.
+The Wizard uses the selected/default local models and can trigger their normal
+first-use download. Scans run sequentially after media loading; a failure stops
+the remaining guided steps. Canceling the Wizard returns to the mode chooser.
+This chooser appears on each launch; --self-test bypasses it.
+Validation: mode/drop validation, wizard settings and ordered load/scan dispatch.
+
+DROP CARDS AND MEDIA LOADING (3.14)
+Wizard and Advanced now use side-by-side drop cards with dashed borders, rounded
+corners and drag-over highlighting. App is a compact launch button underneath.
+The circular progress dialog appears during local service startup and media
+loading, including metadata reading, fingerprinting, saved-scene checks and
+replacement preparation. Loading can be cancelled between processing stages.
+Loading percentages count completed preparation stages, not elapsed time.
+Validation: chooser/layout checks, cancellation checks, and real media loading
+with progress visibility and completion cleanup.
+
+WIZARD AND PROGRESS FIXES (3.15)
+Dropped media opens the Wizard directly at Video filters. Without a dropped
+file, the media chooser remains available. Spoken-word filtering in the Wizard
+uses presets only. The visual shortcut is now labelled Insects and Spiders.
+The startup chooser and Wizard are independent windows with the application
+icon so Windows can show them on the taskbar while the editor is hidden.
+The Just launch the app... button has additional spacing and no App prefix.
+Progress text encoding is corrected. Operations remain busy until their queued
+UI cleanup finishes, preventing subsequent wizard or waveform jobs from
+replacing a still-open progress dialog and leaving a stale 0% window.
+Validation: 59 unit tests, real media loading, cancellation, wizard dispatch,
+and 30 rapid completion cycles checking for lingering progress windows.
+
+GUIDED REVIEW AND AUDIO PRESET DISPLAY (3.16)
+The Wizard ends on Spoken words: Open editor loads the media and runs selected
+scans immediately, without a separate Ready to review page.
+Audio presets appear by name rather than exposing their keyword lists. The X
+button clears the preset and lets you enter custom words. Detection continues
+to use the preset keywords internally.
+After guided operations complete, a nonmodal hint beside Findings invites you
+to review matches. Got it then points to Export for filtered video or compatible
+player-file output. The editor remains usable while these hints are visible.
+Validation: 59 unit tests and UI checks for preset/custom mode, wizard final
+page, scan completion before guidance, and both hint acknowledgement steps.
+
+FONT CLEARANCE AND CONTROL SPACING (3.17)
+Buttons, input fields, checkboxes and radio buttons now reserve font-relative
+minimum height with more vertical padding. Group titles and sections have more
+room. Timeline buttons no longer have a fixed 28-pixel height, and their panel
+can grow to fit. Timeline gain labels use measured text width.
+Export has larger row spacing, wrapping form rows, and scrolling when its dock
+is too small. Browse and other controls retain their full text height.
+Validation: button content rectangles checked at 12, 16 and 20 pixel fonts;
+additional checks at 150% and 200% Qt display scaling; 59 unit tests.
+
+STARTUP DROP CARD FIX (3.18)
+Drop cards use their own minimum height and expanding size policy so shared
+button styling cannot collapse their labels. Both titles, descriptions and
+drop instructions remain visible. Checked at normal and 200% Qt scaling.
+
+PLAYBACK MODE TOGGLE (3.19)
+Original and Filtered are adjacent exclusive buttons at the bottom-right of
+the player controls, replacing the mode text and Filtered playback checkbox.
+Newly loaded media defaults to Original, even with saved scenes. Switching
+mode keeps the source position and current play/pause state. Scan completion
+can still select Filtered for reviewing results.
+Validation: exclusive selection, default mode, playback reload and silent
+state synchronization checks, plus 59 unit tests.

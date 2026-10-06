@@ -1,0 +1,13 @@
+Windows v3.19
+Original/Filtered playback toggle and accumulated editor improvements.
+Existing Windows executable and matching source ZIP included as release assets.
+
+macOS/Linux v3.20 preview
+Executable self-extracting installers with dependency provisioning.
+macOS uses a separate video preview window. Ubuntu/Debian uses X11/XWayland.
+Native playback, GPU inference and platform speech backends remain unverified.
+The main source tree contains this cross-platform preview.
+
+Validation
+59 unit tests pass on Windows. Both packaging scripts build successfully.
+Installer payload and shell checks passed in Ubuntu WSL.

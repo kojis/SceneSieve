@@ -1,0 +1,44 @@
+SceneSieve 3.20 - macOS / Linux preview installers
+
+These are executable, self-extracting shell installers with the application
+source included. They are not signed native binaries or offline bundles.
+Internet is required for dependencies and first-use AI models.
+
+macOS: unzip SceneSieve-macOS-v3.20.zip and open Install-SceneSieve.command.
+If executable permissions were lost, run in Terminal:
+  bash /path/to/Install-SceneSieve.command
+Installs Homebrew if missing, then Python 3.12, FFmpeg, mpv and Ollama.
+Creates ~/Applications/SceneSieve.app. Homebrew may request administrator
+approval and Command Line Tools. Current Homebrew supports Apple Silicon
+macOS 15 or newer; Intel/older macOS availability is best effort.
+This app is unsigned and not notarized. It may require Open Anyway in
+System Settings > Privacy & Security after you attempt to open it.
+macOS preview is a separate mpv window, controlled by the editor. In-window
+video embedding requires a future libmpv rendering backend.
+
+Linux: Ubuntu 22.04/24.04 or Debian 12/13 desktop, x86_64 or ARM64.
+Run: bash SceneSieve-Linux-v3.20.run
+Uses apt with sudo for Python, FFmpeg, mpv, eSpeak NG, XWayland and Qt libraries.
+Downloads Ollama into the user's app assets if it is not already installed.
+The application menu receives a SceneSieve entry. Qt uses X11/XWayland for
+embedded playback; a graphical desktop and working DISPLAY are required.
+Other Linux distributions are not handled by this installer.
+
+App data and private Python environments:
+  macOS: ~/Library/Application Support/SceneSieve
+  Linux: ${XDG_DATA_HOME:-~/.local/share}/SceneSieve
+System tools are managed by Homebrew/apt; models remain under app storage.
+Speech replacement uses macOS system voices or Linux eSpeak NG.
+Re-run the installer to repair missing Python dependencies. Existing settings,
+models and media are preserved. --install-only skips launching after setup.
+--check verifies the embedded archive without installing or downloading.
+
+Verification: Python compilation and Windows regression tests; installer
+shell syntax and payload integrity checked using Ubuntu WSL. Native macOS,
+Linux desktop playback, GPU inference and new speech backends are UNVERIFIED.
+
+Dependency sources:
+https://docs.brew.sh/Installation
+https://docs.ollama.com/linux
+https://mpv.io/manual/stable/
+Python packages: https://pypi.org/
