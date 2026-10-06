@@ -12,7 +12,7 @@ with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED) as z:
     z.write(root/'docs/Windows-guide.txt','USER_GUIDE.txt')
 compiler=Path(os.environ.get('SystemRoot','C:/Windows'))/'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
 if not compiler.exists():raise SystemExit('Windows .NET Framework 4.x C# compiler not found: '+str(compiler))
-exe=out/'SceneSieve-Windows-Standalone-v3.22.exe'
+exe=out/'SceneSieve-Windows-Standalone-v3.23.exe'
 subprocess.run([str(compiler),'/nologo','/target:winexe','/out:'+str(exe),'/win32icon:'+str(root/'src/app.ico'),'/resource:'+str(archive)+',app.zip',
     '/reference:System.Windows.Forms.dll','/reference:System.Drawing.dll','/reference:System.IO.Compression.dll',
     '/reference:System.IO.Compression.FileSystem.dll','/reference:System.Web.Extensions.dll',str(root/'packaging/OnlineLauncher.cs')],check=True)
