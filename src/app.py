@@ -377,7 +377,7 @@ class Window(QMainWindow):
         playback_doc=copy.deepcopy(self.doc) if preview else self.doc
         if preview:playback_doc["_preview_range"]=list(preview)
         import visual_effects
-        rendered=self.filtered.isChecked() and bool(visual_effects.scenes(self.doc,self.labels(),self.padding.value()))
+        rendered=self.filtered.isChecked() and bool(visual_effects.scenes(self.doc,self.labels(),self.padding.value()) or media.audio_scenes(self.doc) or self.doc.get('normalize_audio'))
         if preview and self.filtered.isChecked():
             kept=core.kept_ranges(self.doc['duration'],core.cuts(self.doc,self.labels(),self.padding.value()))
             if not any(max(a,preview[0])<min(b,preview[1]) for a,b in kept):

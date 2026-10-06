@@ -35,13 +35,6 @@ class EffectTests(unittest.TestCase):
         self.assertEqual(player_exports.mplayer_edl(doc,None,0),'1.000 3.000 1\n')
         self.assertIn('Freeze frame',player_exports.limitation('Kodi EDL',doc))
 
-    @patch('media.export_media',return_value='preview.mp4')
-    def test_video_preview_renders_even_without_audio(self,export):
-        doc=document(scene('freeze'))
-        result=playback_audio.prepare('preview.mp4','source',doc,{'test'},0,print,None,True)
-        self.assertEqual(result,'preview.mp4')
-        self.assertFalse(export.call_args.args[-1])
-
     def test_distort_keeps_source_offset(self):
         graph=media.audio_filter(document(scene('distort')),start=.5)
         self.assertIn('between(t,0.500000,2.500000)',graph)

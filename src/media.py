@@ -154,7 +154,7 @@ def display_subtitles(doc):
     text=subtitle_text(doc,[(0,doc['duration'])])
     return [dict(start=c.start/1000,end=c.end/1000,text=c.plaintext,precision='cue') for c in pysubs2.SSAFile.from_string(text,format_='srt')] if text.strip() else []
 
-def export_media(video,doc,destination,categories,padding,normalize,progress,cancel,audio_only=False):
+def export_media(video,doc,destination,categories,padding,normalize,progress,cancel,audio_only=False,lossless_audio=False):
     dest=Path(destination)
     if dest.resolve()==Path(video).resolve():raise ValueError('Export must not overwrite the source video.')
     kept=core.kept_ranges(doc['duration'],core.cuts(doc,categories,padding))
@@ -195,7 +195,7 @@ def export_media(video,doc,destination,categories,padding,normalize,progress,can
         if srt and not audio_only:subfile.write_text(srt,encoding='utf-8');cmd+=['-i',str(subfile)]
         if not audio_only:cmd+=['-map','0:v:0','-c:v','copy']
         if has_audio:
-            codec='pcm_s16le' if dest.suffix.lower()=='.wav' else 'flac' if dest.suffix.lower()=='.flac' else 'aac'
+            codec='pcm_s16le' if dest.suffix.lower()=='.wav' else 'flac' if lossless_audio or dest.suffix.lower()=='.flac' else 'aac'
             cmd+=['-map','0:a:0','-c:a',codec]
             if codec=='aac':cmd+=['-b:a','192k']
         if srt and not audio_only:cmd+=['-map','1:0','-c:s','srt' if dest.suffix.lower()=='.mkv' else 'mov_text']
