@@ -1,6 +1,11 @@
 # SceneSieve
 
-Local video review and filtering: find visual content and spoken words, review timestamped ranges, preview cuts and audio treatments, and export filtered media or compatible player sidecars.
+Local video review and filtering: find visual content and spoken words, review timestamped ranges, preview cuts and audio treatments, and export filtered media or compatible player timeshifts.
+
+## Demo
+
+https://youtu.be/V8zXyiAmzvw?si=O0nhgS1gu7SJUD-V
+
 
 ## Release status
 
